@@ -1,0 +1,180 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-sizing: border-box;
+  vertical-align: baseline;
+  font-size: inherit;
+  font: inherit;
+  font-family: "DM Sans", sans-serif;
+}
+
+html {
+  font-size: 65.5%;
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-optical-sizing: auto;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+main,
+menu,
+nav,
+section {
+  display: block;
+}
+
+ol,
+ul {
+  list-style: none;
+}
+
+blockquote,
+q {
+  quotes: none;
+}
+
+blockquote:before,
+blockquote:after,
+q:before,
+q:after {
+  content: "";
+  content: none;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  outline: none;
+  background: none;
+  accent-color: red;
+  /* appearance: none; */
+  /* -webkit-appearance: none;
+  -moz-appearance: none; */
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+.close-btn {
+  width: 40px;
+  height: 40px;
+  /* border-radius: 50%; */
+  background-color: rgba(255, 255, 255, 0.68);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn::before,
+.close-btn::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background-color: #090909;
+  border-radius: 2px;
+}
+
+.close-btn::before {
+  transform: rotate(45deg);
+}
+
+.close-btn::after {
+  transform: rotate(-45deg);
+}
+
+.close-btn:hover {
+  cursor: pointer;
+}
+
+.my-custom-toast {
+  position: relative;
+  top: 50px;
+  background-color: white;
+  color: black;
+  font-weight: 500;
+  border-radius: 5px;
+  transition: none;
+}
+
+.my-custom-toast button {
+  color: red !important;
+  opacity: 1;
+}
+
+.my-custom-error {
+  position: relative;
+  background: red;
+  top: 50px;
+  font-weight: 500;
+  border-radius: 5px;
+  transition: none;
+}
+
+.my-custom-error button {
+  color: black;
+  opacity: 1;
+}
+
+.my-custom-logo {
+  height: 40px;
+  width: 95px;
+  filter: brightness(1.5);
+}
