@@ -70,7 +70,7 @@
 <script setup>
 import { ref, onMounted, provide } from "vue";
 import { useRouter } from "vue-router";
-import { useCartStore } from "./store/cartStore";
+import { useCartStore } from "@/store/cartStore";
 import { useToast } from 'vue-toastification';
 
 // Router & Store

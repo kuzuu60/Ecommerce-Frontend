@@ -24,7 +24,7 @@
 
 <script setup>
 
-import { useCartStore } from './store/cartStore';
+import { useCartStore } from '@/store/cartStore';
 import { useRouter } from 'vue-router';
 const router = useRouter();
 const cartStore = useCartStore();

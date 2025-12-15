@@ -7,7 +7,7 @@ import 'vue-toastification/dist/index.css'
 // Main App component
 import App from "./App.vue";
 // Router
-import router from "./components/router/index.js";
+import router from "@/router";
 
 // Styles
 import "./style.css";

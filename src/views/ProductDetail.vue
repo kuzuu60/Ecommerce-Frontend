@@ -36,7 +36,7 @@ import { useToast } from "vue-toastification";
 const toast = useToast();
 import { computed, inject, ref } from "vue";
 import { useRoute } from "vue-router";
-import { useCartStore } from "./store/cartStore";
+import { useCartStore } from "@/store/cartStore";
 
 // Store & Route
 const cartStore = useCartStore();

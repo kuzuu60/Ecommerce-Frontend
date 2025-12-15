@@ -50,8 +50,8 @@
 
         <!-- ⭐ Integrated Khalti Payment -->
         <div style="margin-top: 20px;">
-          <h3>Khalti Payment</h3>
-          <KhaltiButton :amount="totalAmount" />
+          <h3>eSewa Payment</h3>
+          <EsewaButton :amount="totalAmount" :productId="'order_123'" />
         </div>
       </div>
     </div>
@@ -59,9 +59,9 @@
 </template>
 
 <script setup>
-import { useCartStore } from './store/cartStore';
+import { useCartStore } from '@/store/cartStore';
 import { useToast } from 'vue-toastification';
-// import KhaltiButton from './KhaltiButton.vue';   // ⭐ REQUIRED IMPORT
+import EsewaButton from '@/components/EsewaButton.vue';
 
 const cartStore = useCartStore();
 const toast = useToast();

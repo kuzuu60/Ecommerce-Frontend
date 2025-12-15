@@ -4,30 +4,27 @@
   </button>
 </template>
 
-<script>
-import { initiateKhaltiPayment } from '@/services/khaltiService';
+<script setup>
+import { initiateKhaltiPayment } from '@/services/khaltiServices';
 
-export default {
-  props: {
-    amount: {
-      type: Number,
-      required: true
-    }
-  },
-  methods: {
-    payWithKhalti() {
-      initiateKhaltiPayment(
-        this.amount * 100, // convert to paisa
-        (success) => {
-          alert('Payment Successful! ' + JSON.stringify(success));
-        },
-        (error) => {
-          alert('Payment Failed! ' + JSON.stringify(error));
-        }
-      );
-    }
+const props = defineProps({
+  amount: {
+    type: Number,
+    required: true
   }
-}
+});
+
+const payWithKhalti = () => {
+  initiateKhaltiPayment(
+    props.amount * 100, // convert to paisa
+    (success) => {
+      alert('Payment Successful! ' + JSON.stringify(success));
+    },
+    (error) => {
+      alert('Payment Failed! ' + JSON.stringify(error));
+    }
+  );
+};
 </script>
 
 <style scoped>

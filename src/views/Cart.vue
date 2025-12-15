@@ -36,9 +36,9 @@
 </template>
 
 <script setup>
-import OrderSummary from './OrderSummary.vue';
+import OrderSummary from '@/components/OrderSummary.vue';
 import { ref } from 'vue';
-import { useCartStore } from './store/cartStore';
+import { useCartStore } from '@/store/cartStore';
 
 const cartStore = useCartStore();
 const cartProducts = ref(cartStore.item_details)
