@@ -93,14 +93,15 @@ watch(products, (newProducts) => {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 260px;
-      width: 260px;
+      height: 250px;
+      width: 250px;
     }
 
     &__discription {
       display: flex;
       flex-direction: column;
       gap: 3px;
+      padding: 3px;
     }
   }
 

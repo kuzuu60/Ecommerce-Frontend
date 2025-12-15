@@ -5,11 +5,11 @@
         <div class="image">
           <img :src="product.thumbnail" :alt="product.title" />
         </div>
-        <div class="color-options">
+        <!-- <div class="color-options">
           <button class="color-circle red"></button>
           <button class="color-circle green"></button>
           <button class="color-circle blue"></button>
-        </div>
+        </div> -->
       </div>
       <div class="details">
         <h2>{{ product.title }}</h2>
