@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <button @click="payWithKhalti" class="khalti-btn">
     Pay with Khalti
   </button>
@@ -39,4 +39,4 @@ const payWithKhalti = () => {
 .khalti-btn:hover {
   background-color: #4725b1;
 }
-</style>
+</style> -->

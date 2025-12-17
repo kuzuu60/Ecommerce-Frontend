@@ -10,8 +10,11 @@
             <div class="discription products--items__discription">
               <h3>{{ product.title }}</h3>
               <p>Price: ${{ product.price }}</p>
-              <p><span class="stars">{{ getStars(product.rating) }}</span></p>
+              <p><span class="stars">{{ getStars(product.rating) }}</span></p><button class="add-to-cart" @click="addToCart(product.title, product.thumbnail, product.price) ">
+          Add to Cart
+        </button>
             </div>
+            
           </div>
         </li>
       </ul>
@@ -25,11 +28,11 @@
 <script setup>
 import { ref, watch, inject, watchEffect, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-
+import { useCartStore } from "@/store/cartStore";
 // Vue Router
 const router = useRouter();
 const route = useRoute();
-
+const cartStore = useCartStore();
 // Reactive Variables
 const selectedTab = ref(route.params.category);
 const selectedProductList = ref([]);
@@ -64,6 +67,11 @@ const getStars = (rating) => {
   return fullStars + emptyStars;
 };
 
+const addToCart = (title, thumbnail, price) => {
+  cartStore.addToCart(quantity.value, route.params.id, title, thumbnail, price);
+  cartStore.totalQuantity();
+  showMessage();
+};
 
 // Watchers
 watchEffect(() => {
@@ -94,7 +102,7 @@ watch(products, (newProducts) => {
       justify-content: center;
       align-items: center;
       height: 250px;
-      width: 250px;
+      width: 100%;
     }
 
     &__discription {
@@ -108,10 +116,10 @@ watch(products, (newProducts) => {
 }
 
 .products ul {
-  padding: 0 20px;
+  padding: 10px 30px;
   display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 40px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
 .item {
@@ -131,8 +139,8 @@ watch(products, (newProducts) => {
 }
 
 .product-img {
-  // height: 260px;
-  // width: 260px;
+  height: 260px;
+  width: 260px;
   transition: all 0.3s ease-in-out;
 }
 
@@ -165,4 +173,19 @@ watch(products, (newProducts) => {
   color: gold;
   font-size: 2rem;
 }
+
+.add-to-cart {
+        background: red;
+        color: white;
+        padding: 14px;
+        font-size: 2rem;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+
+        &:hover {
+          background: rgb(198, 0, 0)
+        }
+
+      }
 </style>
