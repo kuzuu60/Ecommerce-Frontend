@@ -40,11 +40,23 @@ onMounted(async () => {
   const pendingOrder = localStorage.getItem('pending_order');
   if (pendingOrder) {
     try {
-      const items = JSON.parse(pendingOrder);
+      const pendingData = JSON.parse(pendingOrder);
+      
+      // Handle both old format (array) and new format (object) just in case
+      let items = [];
+      let customerInfo = {};
+
+      if (Array.isArray(pendingData)) {
+          items = pendingData;
+      } else {
+          items = pendingData.items;
+          customerInfo = pendingData.customerInfo;
+      }
+
       await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items })
+        body: JSON.stringify({ items, customerInfo, status: 'Paid' })
       });
       localStorage.removeItem('pending_order');
     } catch (err) {

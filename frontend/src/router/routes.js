@@ -21,7 +21,8 @@ const routes = [
       { path: "/contact", component: Contact },
       { path: "/success", component: PaymentSuccess },
       { path: "/failure", component: PaymentFailure },
-      { path: "/admin", component: () => import("@/views/Admin.vue") }
+      { path: "/admin", component: () => import("@/views/Admin.vue") },
+      { path: "/admin/orders", component: () => import("@/views/AdminOrders.vue") }
     ],
   },
 ];

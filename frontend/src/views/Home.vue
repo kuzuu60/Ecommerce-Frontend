@@ -64,7 +64,7 @@
   font-size: 7.5rem;
   font-weight: bold;
   color: white;
-  line-height: 60px;
+  line-height: 1.1;
   padding: 15px;
 }
 
@@ -72,7 +72,7 @@
   font-size: 2rem;
   padding: 15px;
   color: white;
-  line-height: 30px;
+  line-height: 1.5;
 }
 
 .buttons {

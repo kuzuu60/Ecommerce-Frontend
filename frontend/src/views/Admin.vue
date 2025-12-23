@@ -1,6 +1,11 @@
 <template>
   <div class="min-h-screen pt-[120px] pb-20 px-6 max-w-7xl mx-auto">
-    <h1 class="text-4xl font-bold text-white mb-10 tracking-tight font-display">Admin Dashboard</h1>
+    <div class="flex justify-between items-center mb-10">
+        <h1 class="text-4xl font-bold text-white tracking-tight font-display">Admin Dashboard</h1>
+        <router-link to="/admin/orders" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+            View Orders
+        </router-link>
+    </div>
 
     <div class="grid lg:grid-cols-2 gap-12">
       <!-- Add Product Form -->

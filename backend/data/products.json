@@ -499,7 +499,7 @@
       "price": 2024,
       "discountPercentage": 6.84,
       "rating": 3.01,
-      "stock": 59,
+      "stock": 57,
       "tags": [
         "home decor",
         "plant accessories"
@@ -2342,7 +2342,7 @@
       "price": 809,
       "discountPercentage": 12.48,
       "rating": 4.24,
-      "stock": 35,
+      "stock": 34,
       "tags": [
         "kitchen tools",
         "peelers"
@@ -2646,7 +2646,7 @@
       "price": 202499,
       "discountPercentage": 11.89,
       "rating": 2.67,
-      "stock": 74,
+      "stock": 73,
       "tags": [
         "laptops"
       ],
@@ -4238,10 +4238,10 @@
       "title": "Samsung Galaxy S8",
       "description": "The Samsung Galaxy S8 is a premium smartphone with an Infinity Display, offering a stunning visual experience. It boasts advanced camera capabilities and cutting-edge technology.",
       "category": "smartphones",
-      "price": 67499,
+      "price": 6749,
       "discountPercentage": 19.45,
       "rating": 4.4,
-      "stock": 0,
+      "stock": 4,
       "tags": [
         "smartphones",
         "samsung galaxy"
@@ -4289,9 +4289,7 @@
         "qrCode": "https://cdn.dummyjson.com/public/qr-code.png"
       },
       "images": [
-        "https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s8/1.webp",
-        "https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s8/2.webp",
-        "https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s8/3.webp"
+        "https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s8/thumbnail.webp"
       ],
       "thumbnail": "https://cdn.dummyjson.com/product-images/smartphones/samsung-galaxy-s8/thumbnail.webp"
     },
@@ -5441,7 +5439,7 @@
       "price": 6749,
       "discountPercentage": 19.61,
       "rating": 4.03,
-      "stock": 6,
+      "stock": 5,
       "tags": [
         "sports equipment",
         "tennis"
@@ -5807,7 +5805,7 @@
       "price": 3104,
       "discountPercentage": 1.51,
       "rating": 3.02,
-      "stock": 27,
+      "stock": 26,
       "tags": [
         "eyewear",
         "sunglasses"
@@ -6049,6 +6047,22 @@
         "https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-white/4.webp"
       ],
       "thumbnail": "https://cdn.dummyjson.com/product-images/tablets/samsung-galaxy-tab-white/thumbnail.webp"
+    },
+    {
+      "id": 162,
+      "title": "sujalll",
+      "price": 100,
+      "description": "",
+      "category": "laptops",
+      "thumbnail": "http://localhost:5000/uploads/1766466901825-570970759.jpeg",
+      "images": [
+        "http://localhost:5000/uploads/1766466901825-570970759.jpeg"
+      ],
+      "rating": 4.5,
+      "stock": 0,
+      "brand": "Generic",
+      "availabilityStatus": "Out of Stock",
+      "discountPercentage": 0
     }
   ],
   "total": 194,
