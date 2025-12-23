@@ -153,7 +153,6 @@ const toast = useToast()
 // Reactive Variables
 const products = ref([]);
 const showCart = ref(false);
-provide("products", products);
 
 // Categories Data
 const categories = ref([
@@ -196,7 +195,7 @@ const fetchProducts = async () => {
     const response = await fetch("http://localhost:5000/api/products");
     if (!response.ok) throw new Error("Failed to fetch");
     const result = await response.json();
-    products.value = result.products;
+    products.value = result.products.sort((a, b) => b.id - a.id);
 
   } catch (error) {
     console.error(error);
@@ -246,6 +245,9 @@ const updatePositive = (item, quantity, action) => {
 const handleClickOverlay = () => {
   showCart.value = false
 }
+
+provide("products", products);
+provide("fetchProducts", fetchProducts);
 
 // Lifecycle Hook
 onMounted(fetchProducts);

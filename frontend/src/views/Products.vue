@@ -38,6 +38,7 @@
                     <span v-for="n in 5" :key="n" :class="n <= Math.round(product.rating) ? 'fill-current' : 'text-slate-700'">★</span>
                  </div>
                  <span class="text-xs text-slate-400 font-medium pb-0.5">({{ product.rating.toFixed(1) }})</span>
+                 <span v-if="product.stock <= 0" class="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded ml-2">OUT OF STOCK</span>
               </div>
               
               <div class="mt-auto flex items-end justify-between">
@@ -47,7 +48,8 @@
                 </div>
                 
                 <button 
-                  class="relative overflow-hidden bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg shadow-blue-900/30 hover:shadow-blue-500/50 hover:bg-blue-500 active:scale-95 transition-all duration-300 flex items-center justify-center group/btn z-30" 
+                  class="relative overflow-hidden bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg shadow-blue-900/30 hover:shadow-blue-500/50 hover:bg-blue-500 active:scale-95 transition-all duration-300 flex items-center justify-center group/btn z-30 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                  :disabled="product.stock <= 0" 
                   @click.stop="addToCart(product.id, product.title, product.thumbnail, product.price)"
                 >
                   <svg class="w-5 h-5 relative z-10 transition-transform duration-300 group-hover/btn:-translate-y-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
@@ -92,10 +94,7 @@ const selectedProductList = ref([]);
 const products = inject('products');
 
 const availableCategories = [
-  "beauty", "skin-care", "fragrances",
   "laptops", "smartphones", "tablets", "mobile-accessories",
-  "mens-shirts", "mens-shoes", "mens-watches",
-  "womens-dresses", "tops", "womens-shoes", "womens-watches", "womens-jewellery", "womens-bags",
   "home-decoration", "furniture", "kitchen-accessories",
   "sports-accessories", "sunglasses"
 ];

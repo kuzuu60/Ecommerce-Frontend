@@ -17,8 +17,15 @@
         <div class="mb-auto">
           <div class="flex items-center gap-3 mb-4">
             <span class="px-3 py-1 bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-full uppercase tracking-wider">{{ product.category }}</span>
-            <span :class="{'text-emerald-400 bg-emerald-900/30 border-emerald-500/20': product.availabilityStatus === 'In Stock', 'text-amber-400 bg-amber-900/30 border-amber-500/20': product.availabilityStatus === 'Low Stock'}" class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
-              {{ product.availabilityStatus }}
+            
+            <span v-if="product.stock > 10" class="text-emerald-400 bg-emerald-900/30 border-emerald-500/20 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
+               In Stock ({{ product.stock }})
+            </span>
+            <span v-else-if="product.stock > 0" class="text-amber-400 bg-amber-900/30 border-amber-500/20 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
+               Low Stock ({{ product.stock }})
+            </span>
+            <span v-else class="text-red-400 bg-red-900/30 border-red-500/20 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
+               Out of Stock
             </span>
           </div>
           
@@ -35,15 +42,19 @@
             <div class="flex items-center gap-4 bg-slate-950 p-2 rounded-2xl border border-slate-800">
               <button @click="quantity--" :disabled="quantity <= 1" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-50 transition-all font-bold text-lg">-</button>
               <span class="w-12 text-center text-xl font-bold text-slate-200">{{ quantity }}</span>
-              <button @click="quantity++" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-all font-bold text-lg">+</button>
+              <button @click="quantity++" :disabled="quantity >= product.stock" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-50 transition-all font-bold text-lg">+</button>
             </div>
           </div>
         </div>
 
         <div class="mt-auto space-y-4">
-          <button class="w-full bg-blue-600 text-white py-4 px-8 rounded-2xl font-bold text-xl shadow-lg shadow-blue-900/20 hover:bg-blue-500 hover:shadow-blue-500/30 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3" @click="addToCart(product.title, product.thumbnail, product.price)">
+          <button 
+            class="w-full bg-blue-600 text-white py-4 px-8 rounded-2xl font-bold text-xl shadow-lg shadow-blue-900/20 hover:bg-blue-500 hover:shadow-blue-500/30 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed" 
+            :disabled="product.stock <= 0"
+            @click="addToCart(product.title, product.thumbnail, product.price)"
+          >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            Add to Cart
+            {{ product.stock <= 0 ? 'Out of Stock' : 'Add to Cart' }}
           </button>
           
           <p class="text-center text-sm text-slate-500 font-medium border-t border-slate-800 pt-4 flex items-center justify-center gap-2">

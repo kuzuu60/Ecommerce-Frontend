@@ -21,7 +21,7 @@
           <li class="text-base text-slate-400 pl-8 relative mb-5 before:content-['•'] before:text-blue-500 before:absolute before:left-0Before">You may pay in cash to our courier upon receiving your parcel at the doorstep.</li>
         </ul>
 
-        <button @click="showMessage()" class="bg-blue-600 text-white border-none py-3.5 px-6 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 hover:bg-blue-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30 shadow-md shadow-blue-900/20">Confirm Order</button>
+        <button @click="processOrder()" class="bg-blue-600 text-white border-none py-3.5 px-6 rounded-xl text-base font-semibold cursor-pointer transition-all duration-300 hover:bg-blue-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30 shadow-md shadow-blue-900/20">Confirm Order</button>
       </div>
     </div>
 
@@ -44,10 +44,12 @@
           <span class="text-blue-500 text-xl">Rs. {{ cartStore.totalCost }}</span>
         </div>
 
-        <!-- ⭐ Integrated Khalti Payment -->
+        <!-- Integrated eSewa Payment -->
         <div style="margin-top: 20px;">
           <h3 class="text-lg font-medium mb-4 text-slate-200">eSewa Payment</h3>
-          <EsewaButton :amount="totalAmount" :productId="'order_123'" />
+          <button @click="handleEsewa" class="w-full bg-[#41A124] text-white py-3.5 px-6 rounded-xl font-bold hover:bg-[#368a1e] transition-colors shadow-lg shadow-green-900/20">
+            Pay with eSewa
+          </button>
         </div>
       </div>
     </div>
@@ -57,20 +59,90 @@
 <script setup>
 import { useCartStore } from '@/store/cartStore';
 import { useToast } from 'vue-toastification';
-import EsewaButton from '@/components/EsewaButton.vue';
+import { initiateEsewaPayment } from '@/services/esewaService';
 
 const cartStore = useCartStore();
 const toast = useToast();
 
-// link totalAmount to store
+// link totalAmount to store (for Khalti/eSewa if needed)
 const totalAmount = cartStore.totalCost;
 
+const processOrder = async (isEsewa = false) => {
+    try {
+        const orderItems = cartStore.item_details
+            .filter(item => item.checked)
+            .map(item => ({
+                id: item.id,
+                quantity: item.quantity
+            }));
+
+        if (orderItems.length === 0) {
+            toast.warning("Please select items in your cart first.");
+            return false;
+        }
+
+        const res = await fetch('http://localhost:5000/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: orderItems })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            toast.error(data.message || "Order Failed");
+            return false;
+        }
+
+        if (!isEsewa) {
+            toast.success("Thank you! Order placed successfully.", {
+                toastClassName: "relative top-[50px] bg-white text-black font-medium rounded shadow-lg",
+                timeout: 2000,
+                hideProgressBar: true,
+            });
+
+            // Clear Cart
+            cartStore.item_details = [];
+            cartStore.totalQuantity();
+            cartStore.costCalculation();
+
+            setTimeout(() => {
+                window.location.href = '/'; 
+            }, 2000);
+        }
+
+        return true;
+
+    } catch (err) {
+        console.error(err);
+        toast.error("Network Error. Please try again.");
+        return false;
+    }
+};
+
+const handleEsewa = () => {
+    const orderItems = cartStore.item_details
+        .filter(item => item.checked)
+        .map(item => ({
+            id: item.id,
+            quantity: item.quantity
+        }));
+
+    if (orderItems.length === 0) {
+        toast.warning("Please select items in your cart first.");
+        return;
+    }
+
+    // Save for deduction on success page
+    localStorage.setItem('pending_order', JSON.stringify(orderItems));
+    
+    // Find a representative product ID or use 'multi_order'
+    const productId = orderItems[0].id;
+    initiateEsewaPayment(totalAmount, String(productId));
+};
+
 const showMessage = () => {
-  toast.success(" Thank you valued customer! Do visit us again if you need anything else.", {
-    toastClassName: "relative top-[50px] bg-white text-black font-medium rounded shadow-lg",
-    timeout: 1500,
-    hideProgressBar: true,
-  });
+  processOrder();
 };
 </script>
 

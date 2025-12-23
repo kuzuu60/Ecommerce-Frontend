@@ -15,7 +15,7 @@
         <p class="text-lg font-bold text-emerald-500">Completed</p>
       </div>
       
-      <button @click="router.push('/')" class="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-blue-900/20 hover:shadow-emerald-500/30">
+      <button @click="goHome" class="w-full bg-blue-600 text-white py-3.5 px-6 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-blue-900/20 hover:shadow-emerald-500/30">
         Continue Shopping
       </button>
     </div>
@@ -24,17 +24,40 @@
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { onMounted } from 'vue';
+import { onMounted, inject } from 'vue';
 import { useCartStore } from '@/store/cartStore';
 
 const router = useRouter();
 const cartStore = useCartStore();
+const fetchProducts = inject('fetchProducts');
 
-onMounted(() => {
-  // Clear cart on successful payment if needed, though usually handled by backend/store logic
-  // For now we just show the success message
+const goHome = () => {
+    window.location.href = '/';
+};
+
+onMounted(async () => {
+  // Check for pending order from eSewa
+  const pendingOrder = localStorage.getItem('pending_order');
+  if (pendingOrder) {
+    try {
+      const items = JSON.parse(pendingOrder);
+      await fetch('http://localhost:5000/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      localStorage.removeItem('pending_order');
+    } catch (err) {
+      console.error("Error deducting stock for eSewa order:", err);
+    }
+  }
+
+  // Clear cart
   cartStore.item_details = [];
   cartStore.totalQuantity();
   cartStore.costCalculation();
+
+  // Refresh global product data
+  if (fetchProducts) fetchProducts();
 });
 </script>

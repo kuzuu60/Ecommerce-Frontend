@@ -61,14 +61,16 @@
 }
 
 .hero-title {
-  font-size: 5rem;
+  font-size: 7.5rem;
   font-weight: bold;
   color: white;
   line-height: 60px;
+  padding: 15px;
 }
 
 .hero-subtitle {
   font-size: 2rem;
+  padding: 15px;
   color: white;
   line-height: 30px;
 }
