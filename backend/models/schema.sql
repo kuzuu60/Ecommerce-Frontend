@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS orders (
+    order_id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
+    address TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
