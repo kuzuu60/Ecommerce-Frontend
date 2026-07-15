@@ -1,22 +1,19 @@
-const { Pool } = require('pg');
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
-const generateOrderId = require('../utils/generateOrderId'); // your UUID generator
+// Order model - simplified for JSON-based storage
+const { v4: uuidv4 } = require('uuid');
 
-// Create a new application
-async function createOrder(app) {
-  const order_id = generateOrderId(); // generate UUID here
+// Create a new order (returns order object without DB call)
+function createOrder(app) {
+  const order_id = uuidv4();
 
-  const res = await pool.query(`INSERT INTO orders
-      (order_id, name, phone, address)
-     VALUES ($1, $2, $3, $4)
-     RETURNING *`,
-     [order_id, app.name, app.phone, app.address]);
+  return {
+    order_id,
+    name: app.name,
+    phone: app.phone,
+    address: app.address,
+    created_at: new Date().toISOString()
+  };
+}
 
-  return res.rows[0];
-  }
-
-  module.exports = {
-    createOrder
-  };        
+module.exports = {
+  createOrder
+};        

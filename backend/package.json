@@ -1,5 +1,5 @@
 {
-  "name": "ecommerce-backend",
+  "name": "final-project-backend",
   "version": "1.0.0",
   "description": "Backend for Ecommerce Frontend",
   "main": "server.js",
@@ -10,10 +10,10 @@
   "dependencies": {
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "multer": "^2.0.2",
-    "pg": "^8.16.3",
+    "pg": "^8.22.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

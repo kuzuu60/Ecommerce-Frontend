@@ -17,7 +17,7 @@ exports.getProductById = (req, res) => {
 
 exports.createProduct = (req, res) => {
     try {
-        const { title, price, description, category, image, stock } = req.body;
+        const { title, price, description, category, image, stock, discountPercentage } = req.body;
 
         if (!title || !price || !category) {
             return res.status(400).json({ message: 'Title, price, and category are required' });
@@ -45,7 +45,7 @@ exports.createProduct = (req, res) => {
             stock: stock ? parseInt(stock) : 100,
             brand: 'Generic',
             availabilityStatus: 'In Stock',
-            discountPercentage: 0
+            discountPercentage: discountPercentage ? parseFloat(discountPercentage) : 0
         };
 
         data.products.push(newProduct);
@@ -61,7 +61,7 @@ exports.createProduct = (req, res) => {
 exports.updateProduct = (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { title, price, description, category, image, stock } = req.body;
+        const { title, price, description, category, image, stock, discountPercentage } = req.body;
         const data = getProducts();
 
         const productIndex = data.products.findIndex(p => p.id === id);
@@ -84,7 +84,8 @@ exports.updateProduct = (req, res) => {
             category: category || data.products[productIndex].category,
             stock: stock ? parseInt(stock) : data.products[productIndex].stock,
             thumbnail: imageUrl,
-            images: [imageUrl]
+            images: [imageUrl],
+            discountPercentage: discountPercentage !== undefined ? parseFloat(discountPercentage) : data.products[productIndex].discountPercentage
         };
 
         data.products[productIndex] = updatedProduct;

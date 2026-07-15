@@ -1,5 +1,5 @@
 const { getProducts, saveProducts, getOrders, saveOrders } = require('../utils/dataHandler');
-const { createOrder: createOrderDB } = require('../models/orders');
+const { createOrder } = require('../models/orders');
 
 exports.createOrder = async (req, res) => {
     try {
@@ -43,26 +43,18 @@ exports.createOrder = async (req, res) => {
 
         saveProducts(data);
 
-        // Save Order to Database
-        let dbOrder = null;
-        try {
-            const dbOrderData = {
-                name: customerInfo.fullName,
-                phone: customerInfo.phone,
-                address: customerInfo.address
-            };
-            dbOrder = await createOrderDB(dbOrderData);
-            console.log("Order saved to DB:", dbOrder);
-        } catch (dbErr) {
-            console.error("Failed to save order to DB:", dbErr);
-            // Optionally decide if we should fail the request or just log it. 
-            // For now, proceeding as we still save to JSON.
-        }
+        // Create order object
+        const orderData = {
+            name: customerInfo.fullName,
+            phone: customerInfo.phone,
+            address: customerInfo.address
+        };
+        const createdOrder = createOrder(orderData);
 
         // Save Order History (JSON)
         const orders = getOrders();
         const newOrder = {
-            id: dbOrder ? dbOrder.order_id : Date.now().toString(), // Use DB ID if available
+            id: createdOrder.order_id,
             customerInfo,
             items,
             totalAmount,

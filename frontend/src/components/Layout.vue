@@ -179,7 +179,7 @@ const categories = ref([
     id: 5,
     name: "Sports",
     subcategories: [
-      { label: "Accessories", value: "sports-accessories" },
+      { label: "Gear", value: "sports-accessories" },
       { label: "Sunglasses", value: "sunglasses" }
     ]
   },

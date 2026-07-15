@@ -40,7 +40,7 @@
         </div>
 
         <!-- Support Card -->
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-10 shadow-2xl flex flex-col items-center text-center hover:bg-slate-800 transition-all duration-300 group">
+        <!-- <div class="bg-slate-900 border border-slate-800 rounded-3xl p-10 shadow-2xl flex flex-col items-center text-center hover:bg-slate-800 transition-all duration-300 group">
           <div class="w-20 h-20 bg-purple-900/30 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
              <img src="/assets/talkmeimg.svg" alt="Chat" class="w-10 h-10 brightness-0 invert opacity-80" />
           </div>
@@ -56,7 +56,7 @@
           <button class="mt-8 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-blue-900/20 active:translate-y-0.5 transition-all w-full max-w-xs">
             Contact Support
           </button>
-        </div>
+        </div> -->
 
       </div>
     </div>

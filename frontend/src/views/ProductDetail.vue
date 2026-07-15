@@ -36,7 +36,10 @@
           <div class="border-t border-b border-slate-800 py-6 mb-8 flex items-center justify-between">
              <div>
                 <p class="text-sm text-slate-500 font-medium uppercase tracking-wide mb-1">Price</p>
-                <p class="text-4xl font-black text-blue-500">Rs. {{ product.price }}</p>
+                <div class="flex items-center gap-3">
+                  <p class="text-4xl font-black text-blue-500">Rs. {{ getDiscountedPrice(product) }}</p>
+                  <span v-if="product.discountPercentage > 0" class="text-base text-slate-500 line-through">Rs. {{ product.price }}</span>
+                </div>
              </div>
              
             <div class="flex items-center gap-4 bg-slate-950 p-2 rounded-2xl border border-slate-800">
@@ -51,7 +54,7 @@
           <button 
             class="w-full bg-blue-600 text-white py-4 px-8 rounded-2xl font-bold text-xl shadow-lg shadow-blue-900/20 hover:bg-blue-500 hover:shadow-blue-500/30 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed" 
             :disabled="product.stock <= 0"
-            @click="addToCart(product.title, product.thumbnail, product.price)"
+            @click="addToCart(product.title, product.thumbnail, getDiscountedPrice(product))"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             {{ product.stock <= 0 ? 'Out of Stock' : 'Add to Cart' }}
@@ -104,6 +107,12 @@ const addToCart = (title, thumbnail, price) => {
   cartStore.addToCart(quantity.value, route.params.id, title, thumbnail, price);
   cartStore.totalQuantity();
   showMessage();
+};
+
+const getDiscountedPrice = (product) => {
+  const discount = Number(product.discountPercentage || 0);
+  if (discount <= 0) return Number(product.price);
+  return Number((product.price * (1 - discount / 100)).toFixed(2));
 };
 
 const showMessage = () => {

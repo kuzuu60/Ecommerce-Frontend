@@ -2585,7 +2585,7 @@
       "price": 148499,
       "discountPercentage": 6.55,
       "rating": 2.86,
-      "stock": 40,
+      "stock": 39,
       "tags": [
         "laptops"
       ],
@@ -3744,7 +3744,7 @@
       "price": 121499,
       "discountPercentage": 19.59,
       "rating": 2.51,
-      "stock": 37,
+      "stock": 36,
       "tags": [
         "smartphones",
         "apple"
@@ -6059,9 +6059,9 @@
         "http://localhost:5000/uploads/1766466901825-570970759.jpeg"
       ],
       "rating": 4.5,
-      "stock": 0,
+      "stock": 99,
       "brand": "Generic",
-      "availabilityStatus": "Out of Stock",
+      "availabilityStatus": "In Stock",
       "discountPercentage": 0
     }
   ],

@@ -20,14 +20,13 @@
           <div>
             <div class="mb-2 flex items-center justify-between">
               <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600 uppercase tracking-wider">{{ product.category }}</span>
-              <div class="flex items-center gap-1 text-amber-400">
-                <span>★</span>
-                <span class="font-medium text-gray-700">{{ product.rating }}</span>
-              </div>
             </div>
             
             <h2 class="mb-2 text-3xl font-bold text-gray-800 leading-tight">{{ product.title }}</h2>
-            <p class="mb-6 text-3xl font-extrabold text-blue-600">${{ product.price }}</p>
+            <div class="mb-6 flex items-center gap-3">
+              <p class="text-3xl font-extrabold text-blue-600">${{ getDiscountedPrice(product) }}</p>
+              <span v-if="product.discountPercentage > 0" class="text-base text-gray-500 line-through">${{ product.price }}</span>
+            </div>
             
             <p class="mb-6 text-gray-600 leading-relaxed text-sm">
               Discover the quality and style of our {{ product.title }}. Perfect for your needs and designed to last.
@@ -72,4 +71,10 @@ defineProps({
 });
 
 defineEmits(['close', 'addToCart']);
+
+const getDiscountedPrice = (product) => {
+  const discount = Number(product.discountPercentage || 0);
+  if (discount <= 0) return Number(product.price);
+  return Number((product.price * (1 - discount / 100)).toFixed(2));
+};
 </script>

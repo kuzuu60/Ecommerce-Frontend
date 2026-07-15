@@ -61,27 +61,12 @@
             </div>
           </div>
 
-          <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-6">
             <div class="space-y-2">
-              <label class="text-sm font-medium text-slate-400">Product Image</label>
-              <div class="flex gap-4 items-center">
-                  <div class="flex-1">
-                      <input type="file" @change="handleImageUpload" accept="image/*"
-                      class="w-full text-sm text-slate-400
-                        file:mr-4 file:py-2.5 file:px-4
-                        file:rounded-xl file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-blue-600 file:text-white
-                        hover:file:bg-blue-500
-                        cursor-pointer file:cursor-pointer" />
-                  </div>
-                  <span class="text-slate-500 font-medium">OR</span>
-                   <div class="flex-1">
-                      <input v-model="newProduct.image" type="url"
-                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
-                        placeholder="Image URL (optional)" />
-                   </div>
-              </div>
+              <label class="text-sm font-medium text-slate-400">Discount (%)</label>
+              <input v-model.number="newProduct.discountPercentage" type="number" min="0" max="100"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+                placeholder="0" />
             </div>
           </div>
 
@@ -126,8 +111,11 @@
             
             <div class="flex-1 min-w-0">
               <h3 class="text-slate-200 font-medium truncate">{{ product.title }}</h3>
-              <div class="flex items-center gap-3 mt-1">
+              <div class="flex flex-wrap items-center gap-3 mt-1">
                 <span class="text-blue-400 font-bold">Rs. {{ product.price }}</span>
+                <span v-if="product.discountPercentage > 0" class="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-300 rounded-full border border-blue-500/20">
+                  {{ product.discountPercentage }}% off
+                </span>
                 <span class="text-xs px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full border border-slate-700 capitalize">{{ product.category }}</span>
                  <span class="text-xs px-2 py-0.5 text-slate-300 rounded-full border border-slate-700" :class="product.stock > 0 ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'">
                      Stock: {{ product.stock }}
@@ -188,7 +176,8 @@ const newProduct = ref({
   description: '',
   category: '',
   image: '',
-  stock: ''
+  stock: '',
+  discountPercentage: 0
 });
 
 // fetchProducts is now injected from Layout.vue
@@ -240,7 +229,8 @@ const editProduct = (product) => {
     description: product.description,
     category: product.category,
     image: product.thumbnail || product.images?.[0] || '',
-    stock: product.stock
+    stock: product.stock,
+    discountPercentage: product.discountPercentage || 0
   };
   // Handle Main Category selection for Edit
   for (const [main, subs] of Object.entries(categoryGroups)) {
@@ -258,7 +248,7 @@ const cancelEdit = () => {
     editId.value = null;
     imageFile.value = null;
     selectedMainCategory.value = "";
-    newProduct.value = { title: '', price: '', description: '', category: '', image: '', stock: '' };
+    newProduct.value = { title: '', price: '', description: '', category: '', image: '', stock: '', discountPercentage: 0 };
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) fileInput.value = '';
 };
@@ -280,6 +270,7 @@ const updateProduct = async () => {
     formData.append('description', newProduct.value.description);
     formData.append('category', newProduct.value.category);
     formData.append('stock', newProduct.value.stock);
+    formData.append('discountPercentage', newProduct.value.discountPercentage || 0);
 
     if (imageFile.value) {
         formData.append('image', imageFile.value);
@@ -324,6 +315,7 @@ const addProduct = async () => {
     formData.append('description', newProduct.value.description);
     formData.append('category', newProduct.value.category);
     formData.append('stock', newProduct.value.stock || 100);
+    formData.append('discountPercentage', newProduct.value.discountPercentage || 0);
     
     if (imageFile.value) {
         formData.append('image', imageFile.value);
