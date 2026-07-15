@@ -1,10 +1,15 @@
 <template>
   <div class="min-h-screen pt-[120px] pb-20 px-6 max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-10">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
         <h1 class="text-4xl font-bold text-white tracking-tight font-display">Admin Dashboard</h1>
-        <router-link to="/admin/orders" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-            View Orders
-        </router-link>
+        <div class="flex items-center gap-3">
+          <router-link to="/admin/orders" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+              View Orders
+          </router-link>
+          <button @click="handleLogout" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition-all">
+            Logout
+          </button>
+        </div>
     </div>
 
     <div class="grid lg:grid-cols-2 gap-12">
@@ -161,11 +166,15 @@
 
 <script setup>
 import { ref, onMounted, computed, inject } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAdminStore } from '@/store/adminStore';
 import { useToast } from 'vue-toastification';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import ActionStatusModal from '../components/ActionStatusModal.vue';
 
 const toast = useToast();
+const router = useRouter();
+const adminStore = useAdminStore();
 const products = inject('products');
 const fetchProducts = inject('fetchProducts');
 const loading = ref(false);
@@ -213,6 +222,11 @@ const imageFile = ref(null);
 
 const handleImageUpload = (event) => {
   imageFile.value = event.target.files[0];
+};
+
+const handleLogout = () => {
+  adminStore.clearAdmin();
+  router.push('/admin/login');
 };
 
 
@@ -278,8 +292,12 @@ const updateProduct = async () => {
         formData.append('image', newProduct.value.image);
     }
 
+    const token = localStorage.getItem('admin_token');
     const res = await fetch(`http://localhost:5000/api/products/${editId.value}`, {
       method: 'PUT',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ''
+      },
       body: formData
     });
 
@@ -323,8 +341,12 @@ const addProduct = async () => {
         formData.append('image', newProduct.value.image);
     }
 
+    const token = localStorage.getItem('admin_token');
     const res = await fetch('http://localhost:5000/api/products', {
       method: 'POST',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ''
+      },
       body: formData // No Content-Type header, let browser set boundary
     });
 
@@ -355,8 +377,12 @@ const handleDeleteConfirm = async () => {
   showDeleteConfirm.value = false;
   
   try {
+    const token = localStorage.getItem('admin_token');
     const res = await fetch(`http://localhost:5000/api/products/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ''
+      }
     });
 
     if (!res.ok) throw new Error('Failed to delete');

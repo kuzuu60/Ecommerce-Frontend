@@ -7,6 +7,7 @@ import Home from "@/views/Home.vue";
 import Contact from "@/views/Contact.vue";
 import PaymentSuccess from "@/views/PaymentSuccess.vue";
 import PaymentFailure from "@/views/PaymentFailure.vue";
+import AdminLogin from "@/views/AdminLogin.vue";
 
 const routes = [
   {
@@ -21,8 +22,9 @@ const routes = [
       { path: "/contact", component: Contact },
       { path: "/success", component: PaymentSuccess },
       { path: "/failure", component: PaymentFailure },
-      { path: "/admin", component: () => import("@/views/Admin.vue") },
-      { path: "/admin/orders", component: () => import("@/views/AdminOrders.vue") }
+      { path: "/admin/login", component: AdminLogin },
+      { path: "/admin", component: () => import("@/views/Admin.vue"), meta: { requiresAuth: true } },
+      { path: "/admin/orders", component: () => import("@/views/AdminOrders.vue"), meta: { requiresAuth: true } }
     ],
   },
 ];

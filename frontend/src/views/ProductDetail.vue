@@ -65,6 +65,35 @@
             {{ product.shippingInformation }}
           </p>
         </div>
+
+        <div class="mt-10 p-6 bg-slate-900 border border-slate-800 rounded-3xl">
+          <h3 class="text-2xl font-semibold text-white mb-4">Ask about this product</h3>
+
+          <textarea
+            v-model="qaQuestion"
+            rows="4"
+            placeholder="Ask a question about this product..."
+            class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-slate-100 focus:outline-none focus:border-blue-500 transition-all resize-none"
+          ></textarea>
+
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
+            <button
+              @click="askQuestion"
+              :disabled="qaLoading || !qaQuestion.trim()"
+              class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white py-3 px-6 rounded-2xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ qaLoading ? 'Answering...' : 'Ask the AI' }}
+            </button>
+            <span v-if="!qaLoading" class="text-sm text-slate-400">Powered by Gemini</span>
+          </div>
+
+          <div v-if="qaError" class="mt-4 text-sm text-red-400">{{ qaError }}</div>
+
+          <div v-if="qaAnswer" class="mt-6 bg-slate-950 border border-slate-800 rounded-2xl p-4">
+            <h4 class="text-lg font-semibold text-white mb-3">Answer</h4>
+            <p class="text-slate-300 leading-7 whitespace-pre-line">{{ qaAnswer }}</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -115,13 +144,53 @@ const getDiscountedPrice = (product) => {
   return Number((product.price * (1 - discount / 100)).toFixed(2));
 };
 
+const qaQuestion = ref('');
+const qaAnswer = ref('');
+const qaLoading = ref(false);
+const qaError = ref(null);
+
+const askQuestion = async () => {
+  if (!qaQuestion.value.trim() || !product.value) return;
+
+  qaLoading.value = true;
+  qaError.value = null;
+  qaAnswer.value = '';
+
+  try {
+    const response = await fetch('http://localhost:5000/api/qa', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        productId: product.value.id,
+        question: qaQuestion.value.trim()
+      })
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      qaError.value = data.message || 'Unable to get an answer';
+      return;
+    }
+
+    const data = await response.json();
+    qaAnswer.value = data.answer || 'No answer returned.';
+  } catch (err) {
+    console.error('QA error:', err);
+    qaError.value = 'AI request failed. Please try again.';
+  } finally {
+    qaLoading.value = false;
+  }
+};
+
 const showMessage = () => {
   toast.success(`${quantity.value} item added to cart`, {
     toastClassName: "relative flex items-center gap-3 bg-white text-slate-800 font-medium rounded-xl shadow-xl border border-slate-100 p-4 ring-1 ring-black/5", 
     timeout: 2000, 
     hideProgressBar: true,
   });
-}
+};
 
 </script>
 

@@ -6059,7 +6059,23 @@
         "http://localhost:5000/uploads/1766466901825-570970759.jpeg"
       ],
       "rating": 4.5,
-      "stock": 99,
+      "stock": 98,
+      "brand": "Generic",
+      "availabilityStatus": "In Stock",
+      "discountPercentage": 0
+    },
+    {
+      "id": 163,
+      "title": "Laptop 1",
+      "price": 1000,
+      "description": "This is a laptop that is well suited for business works like excel etc",
+      "category": "laptops",
+      "thumbnail": "https://via.placeholder.com/150",
+      "images": [
+        "https://via.placeholder.com/150"
+      ],
+      "rating": 4.5,
+      "stock": 10,
       "brand": "Generic",
       "availabilityStatus": "In Stock",
       "discountPercentage": 0

@@ -18,10 +18,10 @@
 
     <!-- Cards Section -->
     <div class="relative z-20 max-w-6xl mx-auto px-6 -mt-20 pb-20">
-      <div class="grid md:grid-cols-2 gap-8">
+      <div class="grid place-items-center gap-8">
         
         <!-- Sales Card -->
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-10 shadow-2xl flex flex-col items-center text-center hover:bg-slate-800 transition-all duration-300 group">
+        <div class="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-10 shadow-2xl flex flex-col items-center text-center hover:bg-slate-800 transition-all duration-300 group">
           <div class="w-20 h-20 bg-blue-900/30 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
             <img src="/assets/callingimg.svg" alt="Phone" class="w-10 h-10 brightness-0 invert opacity-80" />
           </div>

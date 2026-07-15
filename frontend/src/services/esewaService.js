@@ -16,6 +16,7 @@ export const initiateEsewaPayment = (amount, productId) => {
     const hash = CryptoJS.HmacSHA256(signatureString, secret_key);
     const signature = CryptoJS.enc.Base64.stringify(hash);
 
+    const origin = window.location.origin;
     const params = {
         amount: total_amount,
         tax_amount: tax_amount,
@@ -24,8 +25,8 @@ export const initiateEsewaPayment = (amount, productId) => {
         product_code: product_code,
         product_service_charge: product_service_charge,
         product_delivery_charge: product_delivery_charge,
-        success_url: "http://localhost:5173/success",
-        failure_url: "http://localhost:5173/failure",
+        success_url: `${origin}/success`,
+        failure_url: `${origin}/failure`,
         signed_field_names: "total_amount,transaction_uuid,product_code",
         signature: signature,
     };
