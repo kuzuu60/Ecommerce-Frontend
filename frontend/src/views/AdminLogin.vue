@@ -1,6 +1,9 @@
 <template>
   <div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-12">
     <div class="w-full max-w-md bg-slate-900/95 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-slate-900/50">
+      <button @click="router.push('/')" class="mb-6 text-sm text-slate-400 transition-colors hover:text-blue-400">
+        ← Back to storefront
+      </button>
       <h1 class="text-3xl font-semibold text-white mb-6 text-center">Admin Login</h1>
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
@@ -56,7 +59,7 @@ const handleLogin = async () => {
     const data = await res.json();
     adminStore.setAdmin(data.token, data.user);
     toast.success('Logged in successfully');
-    router.push('/admin');
+    await router.replace('/admin');
   } catch (err) {
     console.error(err);
     error.value = 'Unable to login. Please try again.';

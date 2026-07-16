@@ -1,5 +1,5 @@
 <template>
-  <div class="flex justify-center min-h-[calc(100vh-80px)] py-12 px-4 sm:px-6 lg:px-8 bg-slate-950">
+  <div class="flex flex-col items-center min-h-[calc(100vh-80px)] py-12 px-4 sm:px-6 lg:px-8 bg-slate-950">
     <div v-if="product" class="w-full max-w-6xl bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-800 flex flex-col md:flex-row relative">
       <button @click="goBack" class="absolute top-4 left-4 z-10 p-2 bg-slate-800/80 backdrop-blur-md text-slate-200 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-lg border border-slate-700">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -31,7 +31,17 @@
           
           <h2 class="text-4xl sm:text-5xl font-extrabold text-slate-100 mb-6 leading-tight tracking-tight">{{ product.title }}</h2>
           
-          <p class="text-lg text-slate-400 leading-relaxed mb-8">{{ product.description }}</p>
+           <p class="text-lg text-slate-400 leading-relaxed mb-8">{{ product.description }}</p>
+
+           <div v-if="product.specs" class="mb-8">
+             <p class="text-sm text-slate-500 font-medium uppercase tracking-wide mb-2">Specifications</p>
+             <p class="text-sm text-slate-300 leading-relaxed">{{ product.specs }}</p>
+           </div>
+
+           <div class="mb-8">
+             <p class="text-sm text-slate-500 font-medium uppercase tracking-wide mb-2">Warranty</p>
+             <p class="text-sm text-slate-300 leading-relaxed">{{ product.warrantyInformation || 'No warranty' }}</p>
+           </div>
           
           <div class="border-t border-b border-slate-800 py-6 mb-8 flex items-center justify-between">
              <div>
@@ -82,7 +92,7 @@
               :disabled="qaLoading || !qaQuestion.trim()"
               class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white py-3 px-6 rounded-2xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ qaLoading ? 'Answering...' : 'Ask the AI' }}
+              {{ qaLoading ? 'Checking...' : 'Ask about product' }}
             </button>
             <span v-if="!qaLoading" class="text-sm text-slate-400">Powered by {{ qaProvider }}</span>
           </div>
@@ -96,18 +106,41 @@
         </div>
       </div>
     </div>
+
+    <section v-if="similarProducts.length" class="w-full max-w-6xl mt-8">
+      <div class="mb-5">
+        <h3 class="text-2xl font-semibold text-white">Similar Products</h3>
+        <p class="text-sm text-slate-500 mt-1">Content-based recommendations using product attributes and price.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <article v-for="recommendation in similarProducts" :key="recommendation.productId" class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <button type="button" class="w-full h-40 bg-white p-5 flex items-center justify-center" @click="openRecommendation(recommendation)">
+            <img :src="recommendation.thumbnail" :alt="recommendation.name" class="max-h-full max-w-full object-contain" />
+          </button>
+          <div class="p-4">
+            <p class="text-[10px] uppercase tracking-wider text-blue-400 mb-1">{{ Math.round(recommendation.similarityScore * 100) }}% similar</p>
+            <h4 class="text-sm font-semibold text-slate-100 line-clamp-2 min-h-10">{{ recommendation.name }}</h4>
+            <p class="text-xs text-slate-500 mt-1">{{ recommendation.reason }}</p>
+            <p class="text-lg font-bold text-slate-100 mt-3">Rs. {{ recommendation.price }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
 import { useToast } from "vue-toastification";
 const toast = useToast();
-import { computed, inject, ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/authStore";
 
 // Store & Route
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter(); // Ensure useRouter is imported and assigned
 
@@ -133,6 +166,14 @@ const product = computed(() => {
 
 // Function to Add Product to Cart
 const addToCart = (title, thumbnail, price) => {
+  if (!authStore.isAuthenticated) {
+    toast.info("Please sign in or sign up before adding items to your cart.", {
+      timeout: 2500,
+      hideProgressBar: true,
+    });
+    router.push({ path: '/auth', query: { redirect: route.fullPath } });
+    return;
+  }
   cartStore.addToCart(quantity.value, route.params.id, title, thumbnail, price);
   cartStore.totalQuantity();
   showMessage();
@@ -146,9 +187,29 @@ const getDiscountedPrice = (product) => {
 
 const qaQuestion = ref('');
 const qaAnswer = ref('');
-const qaProvider = ref('AI');
+const qaProvider = ref('Product Catalog');
 const qaLoading = ref(false);
 const qaError = ref(null);
+const similarProducts = ref([]);
+
+const fetchRecommendations = async (productId) => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/products/${productId}/recommendations?topN=4`);
+    if (!response.ok) return;
+    similarProducts.value = await response.json();
+  } catch (error) {
+    console.error('Recommendation error:', error);
+    similarProducts.value = [];
+  }
+};
+
+const openRecommendation = (recommendation) => {
+  router.push(`/${recommendation.category}/${recommendation.productId}`);
+};
+
+watch(product, (currentProduct) => {
+  if (currentProduct) fetchRecommendations(currentProduct.id);
+}, { immediate: true });
 
 const askQuestion = async () => {
   if (!qaQuestion.value.trim() || !product.value) return;
@@ -156,7 +217,7 @@ const askQuestion = async () => {
   qaLoading.value = true;
   qaError.value = null;
   qaAnswer.value = '';
-  qaProvider.value = 'AI';
+  qaProvider.value = 'Product Catalog';
 
   try {
     const response = await fetch('http://localhost:5000/api/qa', {
@@ -177,10 +238,10 @@ const askQuestion = async () => {
     }
 
     qaAnswer.value = data.answer || 'No answer returned.';
-    qaProvider.value = data.provider || 'AI';
+    qaProvider.value = data.provider || 'Product Catalog';
   } catch (err) {
     console.error('QA error:', err);
-    qaError.value = 'AI request failed. Please try again.';
+    qaError.value = 'Product question failed. Please try again.';
   } finally {
     qaLoading.value = false;
   }

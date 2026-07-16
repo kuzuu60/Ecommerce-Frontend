@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
+const recommendationController = require('../controllers/recommendationController');
 const { authenticateAdmin } = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
@@ -23,6 +24,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 router.get('/', productController.getAllProducts);
+router.get('/:id/recommendations', recommendationController.getRecommendations);
 router.get('/:id', productController.getProductById);
 router.post('/', authenticateAdmin, upload.single('image'), productController.createProduct);
 router.put('/:id', authenticateAdmin, upload.single('image'), productController.updateProduct);

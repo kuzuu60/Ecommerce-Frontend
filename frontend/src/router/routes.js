@@ -9,8 +9,24 @@ import PaymentSuccess from "@/views/PaymentSuccess.vue";
 import PaymentFailure from "@/views/PaymentFailure.vue";
 import AdminLogin from "@/views/AdminLogin.vue";
 import Assistant from "@/views/Assistant.vue";
+import Auth from "@/views/Auth.vue";
+import AdminUsers from "@/views/AdminUsers.vue";
+import AdminLayout from "@/components/AdminLayout.vue";
+import Admin from "@/views/Admin.vue";
+import AdminOrders from "@/views/AdminOrders.vue";
 
 const routes = [
+  { path: "/admin/login", component: AdminLogin },
+  {
+    path: "/admin",
+    component: AdminLayout,
+    meta: { requiresAuth: true },
+    children: [
+      { path: "", component: Admin },
+      { path: "orders", component: AdminOrders },
+      { path: "users", component: AdminUsers }
+    ]
+  },
   {
     path: "/",
     component: Layout,
@@ -21,13 +37,11 @@ const routes = [
       { path: "/:category", component: Products },
       { path: "/:category/:id", component: ProductDetail },
       { path: "/cart", component: Cart },
-      { path: "/payment", component: Payment },
       { path: "/contact", component: Contact },
       { path: "/success", component: PaymentSuccess },
       { path: "/failure", component: PaymentFailure },
-      { path: "/admin/login", component: AdminLogin },
-      { path: "/admin", component: () => import("@/views/Admin.vue"), meta: { requiresAuth: true } },
-      { path: "/admin/orders", component: () => import("@/views/AdminOrders.vue"), meta: { requiresAuth: true } }
+      { path: "/auth", component: Auth },
+      { path: "/payment", component: Payment, meta: { requiresUserAuth: true } },
     ],
   },
 ];

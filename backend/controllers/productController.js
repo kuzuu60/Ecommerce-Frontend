@@ -1,4 +1,5 @@
 const pool = require('../models/db');
+const { buildProductSpecs } = require('../utils/productFeatures');
 
 exports.getAllProducts = async (req, res) => {
     try {
@@ -7,6 +8,7 @@ exports.getAllProducts = async (req, res) => {
             id: p.id,
             title: p.title,
             description: p.description,
+            specs: p.specs || '',
             category: p.category,
             price: Number(p.price),
             discountPercentage: Number(p.discount_percentage),
@@ -42,6 +44,7 @@ exports.getProductById = async (req, res) => {
             id: p.id,
             title: p.title,
             description: p.description,
+            specs: p.specs || '',
             category: p.category,
             price: Number(p.price),
             discountPercentage: Number(p.discount_percentage),
@@ -67,7 +70,7 @@ exports.getProductById = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
     try {
-        const { title, price, description, category, image, stock, discountPercentage } = req.body;
+        const { title, price, description, specs, category, image, stock, discountPercentage, warrantyInformation } = req.body;
 
         if (!title || !price || !category) {
             return res.status(400).json({ message: 'Title, price, and category are required' });
@@ -82,18 +85,20 @@ exports.createProduct = async (req, res) => {
 
         const queryText = `
             INSERT INTO products (
-                title, price, description, category, thumbnail, images,
+                title, price, description, specs, category, thumbnail, images,
                 rating, stock, brand, sku, weight, warranty_information,
                 shipping_information, availability_status, discount_percentage,
                 reviews, dimensions
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING *;
         `;
 
+        const productSpecs = specs?.trim() || buildProductSpecs({ title, description, category });
         const values = [
             title,
             parseFloat(price),
             description || '',
+            productSpecs,
             category,
             imageUrl,
             JSON.stringify([imageUrl]),
@@ -102,7 +107,7 @@ exports.createProduct = async (req, res) => {
             'Generic',
             '',
             0,
-            '1 year warranty',
+            warrantyInformation?.trim() || 'No warranty',
             'Ships in 1 month',
             'In Stock',
             discountPercentage ? parseFloat(discountPercentage) : 0,
@@ -117,6 +122,7 @@ exports.createProduct = async (req, res) => {
             title: p.title,
             price: Number(p.price),
             description: p.description,
+            specs: p.specs || '',
             category: p.category,
             thumbnail: p.thumbnail,
             images: p.images,
@@ -143,7 +149,7 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
     try {
         const id = parseInt(req.params.id, 10);
-        const { title, price, description, category, image, stock, discountPercentage } = req.body;
+        const { title, price, description, specs, category, image, stock, discountPercentage, warrantyInformation } = req.body;
 
         const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
         if (existing.rowCount === 0) {
@@ -172,25 +178,39 @@ exports.updateProduct = async (req, res) => {
                 title = $1,
                 price = $2,
                 description = $3,
-                category = $4,
-                thumbnail = $5,
-                images = $6,
-                stock = $7,
-                discount_percentage = $8,
-                availability_status = $9
-            WHERE id = $10
+                specs = $4,
+                category = $5,
+                thumbnail = $6,
+                images = $7,
+                stock = $8,
+                discount_percentage = $9,
+                warranty_information = $10,
+                availability_status = $11
+            WHERE id = $12
             RETURNING *;
         `;
 
+        const nextTitle = title || currentProduct.title;
+        const nextDescription = description !== undefined ? description : currentProduct.description;
+        const nextCategory = category || currentProduct.category;
+        const nextSpecs = specs !== undefined
+            ? specs
+            : currentProduct.specs || buildProductSpecs({ title: nextTitle, description: nextDescription, category: nextCategory });
+        const nextWarranty = warrantyInformation !== undefined
+            ? String(warrantyInformation || '').trim()
+            : currentProduct.warranty_information || 'No warranty';
+
         const values = [
-            title || currentProduct.title,
+            nextTitle,
             price !== undefined ? parseFloat(price) : currentProduct.price,
-            description !== undefined ? description : currentProduct.description,
-            category || currentProduct.category,
+            nextDescription,
+            nextSpecs,
+            nextCategory,
             imageUrl,
             JSON.stringify([imageUrl]),
             newStock,
             discountPercentage !== undefined ? parseFloat(discountPercentage) : currentProduct.discount_percentage,
+            nextWarranty,
             availabilityStatus,
             id
         ];
@@ -203,6 +223,7 @@ exports.updateProduct = async (req, res) => {
             title: p.title,
             price: Number(p.price),
             description: p.description,
+            specs: p.specs || '',
             category: p.category,
             thumbnail: p.thumbnail,
             images: p.images,

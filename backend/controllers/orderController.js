@@ -63,6 +63,7 @@ exports.createOrder = async (req, res) => {
         // Save order to DB
         const orderData = {
             id: orderId,
+            userId: req.user.id,
             name: customerInfo.fullName,
             phone: customerInfo.phone,
             address: customerInfo.address,
@@ -73,11 +74,12 @@ exports.createOrder = async (req, res) => {
         };
 
         const insertQuery = `
-            INSERT INTO orders (order_id, name, phone, address, items, total_amount, status, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+            INSERT INTO orders (order_id, user_id, name, phone, address, items, total_amount, status, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
         `;
         await client.query(insertQuery, [
             orderData.id,
+            orderData.userId,
             orderData.name,
             orderData.phone,
             orderData.address,
@@ -117,5 +119,30 @@ exports.getAllOrders = async (req, res) => {
     } catch (err) {
         console.error("Error fetching orders:", err);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+    const allowedStatuses = ['Pending', 'Paid', 'Confirmed', 'Shipped', 'Delivered'];
+    const { status } = req.body;
+
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Invalid order status' });
+    }
+
+    try {
+        const { rows } = await pool.query(
+            'UPDATE orders SET status = $1 WHERE order_id = $2 RETURNING order_id, status',
+            [status, req.params.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        res.json({ message: 'Order status updated', orderId: rows[0].order_id, status: rows[0].status });
+    } catch (err) {
+        console.error('Error updating order status:', err);
+        res.status(500).json({ message: 'Unable to update order status' });
     }
 };

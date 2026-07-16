@@ -32,13 +32,21 @@
 <script setup>
 import { useCartStore } from '@/store/cartStore';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/store/authStore';
+import { useToast } from 'vue-toastification';
 
 const router = useRouter();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
+const toast = useToast();
 
 const paymentPage = (item) => {
-  if(item > 0){
-    router.push('/payment');
+  if (item <= 0) return;
+  if (!authStore.isAuthenticated) {
+    toast.info('Please sign in or sign up before purchasing.', { timeout: 2000, hideProgressBar: true });
+    router.push({ path: '/auth', query: { redirect: '/payment' } });
+    return;
   }
+  router.push('/payment');
 }
 </script>

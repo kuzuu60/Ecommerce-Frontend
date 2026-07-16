@@ -26,9 +26,11 @@
 import { useRouter } from 'vue-router';
 import { onMounted, inject } from 'vue';
 import { useCartStore } from '@/store/cartStore';
+import { useAuthStore } from '@/store/authStore';
 
 const router = useRouter();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const fetchProducts = inject('fetchProducts');
 
 const goHome = () => {
@@ -55,7 +57,10 @@ onMounted(async () => {
 
       await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`
+        },
         body: JSON.stringify({ items, customerInfo, status: 'Paid' })
       });
       localStorage.removeItem('pending_order');

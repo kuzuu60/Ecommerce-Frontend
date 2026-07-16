@@ -1,20 +1,13 @@
 <template>
-  <div class="min-h-screen pt-[120px] pb-20 px-6 max-w-7xl mx-auto">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
-        <h1 class="text-4xl font-bold text-white tracking-tight font-display">Admin Dashboard</h1>
-        <div class="flex items-center gap-3">
-          <router-link to="/admin/orders" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-              View Orders
-          </router-link>
-          <button @click="handleLogout" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition-all">
-            Logout
-          </button>
-        </div>
+  <div class="min-h-screen lg:h-screen lg:overflow-hidden pt-[120px] lg:pt-8 pb-20 lg:pb-8 px-6 max-w-7xl mx-auto lg:flex lg:flex-col">
+    <div class="mb-10 lg:mb-6 shrink-0">
+      <h1 class="text-4xl font-bold tracking-tight text-white font-display">Admin Dashboard</h1>
+      <p class="mt-2 text-slate-400">Manage your storefront, customers, and orders.</p>
     </div>
 
-    <div class="grid lg:grid-cols-2 gap-12">
+    <div class="grid lg:grid-cols-2 gap-12 lg:flex-1 lg:min-h-0">
       <!-- Add Product Form -->
-      <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-800 p-8 rounded-3xl h-fit sticky top-32">
+      <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-800 p-8 rounded-3xl lg:h-full lg:overflow-y-auto self-start">
         <h2 class="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
           <span class="w-1 h-8 bg-blue-600 rounded-full"></span>
           {{ isEditing ? 'Edit Product' : 'Add New Product' }}
@@ -82,6 +75,35 @@
               placeholder="Product details..."></textarea>
           </div>
 
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-400">Specifications</label>
+            <input v-model="newProduct.specs" type="text"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. i5, 16GB RAM, 512GB SSD" />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-400">Warranty</label>
+            <input v-model="newProduct.warrantyInformation" type="text"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. 2 year warranty or No warranty" />
+          </div>
+
+          <div class="space-y-3">
+            <label class="text-sm font-medium text-slate-400">Product Image</label>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              @change="handleImageUpload"
+              class="block w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-blue-600 file:px-4 file:py-3 file:font-semibold file:text-white hover:file:bg-blue-500"
+            />
+            <p class="text-xs text-slate-500">Upload a JPG, PNG, WEBP, or GIF image.</p>
+            <div v-if="imagePreview || newProduct.image" class="flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-950 p-3">
+              <img :src="imagePreview || newProduct.image" alt="Product preview" class="h-20 w-20 rounded-lg bg-white object-contain p-1" />
+              <p class="truncate text-sm text-slate-300">{{ imageFile?.name || 'Current product image' }}</p>
+            </div>
+          </div>
+
             <div class="flex gap-4">
                 <button type="submit" :disabled="loading"
                     class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
@@ -96,7 +118,7 @@
       </div>
 
       <!-- Product List -->
-      <div class="space-y-6">
+      <div class="space-y-6 lg:min-h-0 lg:h-full lg:overflow-y-auto lg:pr-3">
         <h2 class="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
           <span class="w-1 h-8 bg-purple-600 rounded-full"></span>
           Manage Inventory <span class="text-sm font-normal text-slate-500 ml-2">({{ products.length }} items)</span>
@@ -165,31 +187,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, inject } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAdminStore } from '@/store/adminStore';
+import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import ActionStatusModal from '../components/ActionStatusModal.vue';
 
 const toast = useToast();
-const router = useRouter();
-const adminStore = useAdminStore();
-const products = inject('products');
-const fetchProducts = inject('fetchProducts');
+const products = ref([]);
 const loading = ref(false);
+
+const fetchProducts = async () => {
+  try {
+    const response = await fetch('http://localhost:5000/api/products');
+    if (!response.ok) throw new Error('Failed to fetch products');
+    const result = await response.json();
+    products.value = result.products.sort((a, b) => b.id - a.id);
+  } catch (error) {
+    console.error(error);
+    showStatus('error', 'Loading Failed', 'There was an error loading the product inventory.');
+  }
+};
 
 const newProduct = ref({
   title: '',
   price: '',
   description: '',
+  specs: '',
+  warrantyInformation: '',
   category: '',
   image: '',
   stock: '',
   discountPercentage: 0
 });
-
-// fetchProducts is now injected from Layout.vue
 
 // Modal States
 const showDeleteConfirm = ref(false);
@@ -219,16 +248,13 @@ const availableSubCategories = computed(() => {
 });
 
 const imageFile = ref(null);
+const imagePreview = ref('');
 
 const handleImageUpload = (event) => {
-  imageFile.value = event.target.files[0];
+  const file = event.target.files?.[0];
+  imageFile.value = file || null;
+  imagePreview.value = file ? URL.createObjectURL(file) : '';
 };
-
-const handleLogout = () => {
-  adminStore.clearAdmin();
-  router.push('/admin/login');
-};
-
 
 // Edit State
 const isEditing = ref(false);
@@ -241,11 +267,15 @@ const editProduct = (product) => {
     title: product.title,
     price: product.price,
     description: product.description,
+    specs: product.specs || '',
+    warrantyInformation: product.warrantyInformation || '',
     category: product.category,
     image: product.thumbnail || product.images?.[0] || '',
     stock: product.stock,
     discountPercentage: product.discountPercentage || 0
   };
+  imageFile.value = null;
+  imagePreview.value = newProduct.value.image;
   // Handle Main Category selection for Edit
   for (const [main, subs] of Object.entries(categoryGroups)) {
     if (subs.includes(product.category)) {
@@ -261,8 +291,9 @@ const cancelEdit = () => {
     isEditing.value = false;
     editId.value = null;
     imageFile.value = null;
+    imagePreview.value = '';
     selectedMainCategory.value = "";
-    newProduct.value = { title: '', price: '', description: '', category: '', image: '', stock: '', discountPercentage: 0 };
+    newProduct.value = { title: '', price: '', description: '', specs: '', warrantyInformation: '', category: '', image: '', stock: '', discountPercentage: 0 };
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) fileInput.value = '';
 };
@@ -282,6 +313,8 @@ const updateProduct = async () => {
     formData.append('title', newProduct.value.title);
     formData.append('price', newProduct.value.price);
     formData.append('description', newProduct.value.description);
+    formData.append('specs', newProduct.value.specs);
+    formData.append('warrantyInformation', newProduct.value.warrantyInformation);
     formData.append('category', newProduct.value.category);
     formData.append('stock', newProduct.value.stock);
     formData.append('discountPercentage', newProduct.value.discountPercentage || 0);
@@ -331,6 +364,8 @@ const addProduct = async () => {
     formData.append('title', newProduct.value.title);
     formData.append('price', newProduct.value.price);
     formData.append('description', newProduct.value.description);
+    formData.append('specs', newProduct.value.specs);
+    formData.append('warrantyInformation', newProduct.value.warrantyInformation);
     formData.append('category', newProduct.value.category);
     formData.append('stock', newProduct.value.stock || 100);
     formData.append('discountPercentage', newProduct.value.discountPercentage || 0);

@@ -11,6 +11,11 @@
           <button @click="router.push('/deals')">Shop now</button>
           <button class="secondary-btn" @click="router.push('/contact')">Contact us</button>
         </div>
+        <div class="account-actions">
+          <span>Ready to shop?</span>
+          <button class="account-link" @click="router.push('/auth?mode=signup')">Create an account</button>
+          <button class="account-link muted" @click="router.push('/auth')">Sign in</button>
+        </div>
       </div>
     </section>
   </div>
@@ -75,6 +80,26 @@ h1 {
   flex-wrap: wrap;
   gap: 0.9rem;
   margin-top: 0.5rem;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.account-link {
+  padding: 0;
+  color: #93c5fd;
+  background: transparent;
+  border-radius: 0;
+}
+
+.account-link.muted {
+  color: #cbd5e1;
 }
 
 button {

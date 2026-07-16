@@ -1,363 +1,52 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
 const pool = require('../models/db');
-const fs = require('fs');
-const { GoogleAuth } = require('google-auth-library');
+const { recommendProducts, parseBudget } = require('../utils/contentBasedRecommender');
 
-const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID?.trim();
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-const AI_PROVIDER = process.env.AI_PROVIDER?.trim().toLowerCase() || 'chatgpt';
-const AI_MODEL = process.env.AI_MODEL || 'gemini-1.5-mini';
-const AI_LOCATION = process.env.AI_LOCATION || 'us-central1';
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-const HUGGINGFACE_MODEL = process.env.HUGGINGFACE_MODEL || 'Qwen/Qwen2.5-7B-Instruct';
-const HUGGINGFACE_API_HOST = process.env.HUGGINGFACE_API_HOST || 'router.huggingface.co/v1';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+const toProductResponse = (product) => ({
+  id: product.id,
+  title: product.title,
+  description: product.description,
+  specs: product.specs || '',
+  category: product.category,
+  price: Number(product.price),
+  discountPercentage: Number(product.discount_percentage),
+  rating: Number(product.rating),
+  stock: product.stock,
+  brand: product.brand,
+  sku: product.sku,
+  weight: Number(product.weight),
+  warrantyInformation: product.warranty_information,
+  shippingInformation: product.shipping_information,
+  availabilityStatus: product.availability_status,
+  thumbnail: product.thumbnail,
+  images: product.images,
+  reviews: product.reviews,
+  dimensions: product.dimensions
+});
 
-const buildPrompt = (product, question) => {
-  return `You are an expert product assistant. Answer the user question using only the following product information. If the question is outside this product's details, say that you only know about this product.
+const answerProductQuestion = (product, question) => {
+  const normalizedQuestion = question.toLowerCase();
+  const price = Number(product.price).toLocaleString('en-IN');
+  const specs = product.specs || 'No additional specifications are listed.';
 
-Product Title: ${product.title}
-Category: ${product.category}
-Description: ${product.description || 'No description available.'}
-Price: Rs. ${product.price}
-Discount: ${product.discountPercentage || 0}%
-Stock: ${product.stock}
-Availability: ${product.availabilityStatus || 'Unknown'}
-Brand: ${product.brand || 'N/A'}
-Shipping: ${product.shippingInformation || 'Not specified'}
-
-Question: ${question}
-
-Answer concisely and clearly.`;
-};
-
-const callGemini = async (prompt) => {
-  const useVertexAI = Boolean(GOOGLE_PROJECT_ID);
-  const useServiceAccount = Boolean(GOOGLE_APPLICATION_CREDENTIALS);
-
-  let endpoint;
-  let requestBody;
-  const headers = { 'Content-Type': 'application/json' };
-
-  if (useVertexAI) {
-    endpoint = `https://${AI_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_PROJECT_ID}/locations/${AI_LOCATION}/publishers/google/models/${AI_MODEL}:predict`;
-    requestBody = {
-      instances: [{ content: prompt }],
-      parameters: {
-        temperature: 0.2,
-        maxOutputTokens: 300,
-        topP: 0.95,
-        topK: 40
-      }
-    };
-  } else {
-    if (!GOOGLE_API_KEY) {
-      throw new Error('Missing GOOGLE_API_KEY in environment');
-    }
-    endpoint = `https://generativelanguage.googleapis.com/v1beta2/models/${AI_MODEL}:generateText?key=${GOOGLE_API_KEY}`;
-    requestBody = {
-      prompt: { text: prompt },
-      temperature: 0.2,
-      maxOutputTokens: 300
-    };
+  if (/price|cost|how much|expensive|cheap/.test(normalizedQuestion)) {
+    return `${product.title} is currently priced at Rs. ${price}.`;
+  }
+  if (/stock|available|availability|in stock/.test(normalizedQuestion)) {
+    return `${product.title} is ${product.availability_status || 'currently listed'} with ${product.stock ?? 0} item(s) in stock.`;
+  }
+  if (/ship|delivery|arrive/.test(normalizedQuestion)) {
+    return `${product.shipping_information || 'Shipping information is not listed for this product.'}`;
+  }
+  if (/brand|made by|manufacturer/.test(normalizedQuestion)) {
+    return `${product.title} is a ${product.brand || 'Generic'} product in the ${product.category} category.`;
+  }
+  if (/spec|feature|ram|storage|processor|chip|camera|display|screen|material/.test(normalizedQuestion)) {
+    return `${product.title} features: ${specs}. ${product.description || ''}`.trim();
   }
 
-  if (useServiceAccount) {
-    if (!fs.existsSync(path.resolve(GOOGLE_APPLICATION_CREDENTIALS))) {
-      throw new Error(`Service account file not found: ${GOOGLE_APPLICATION_CREDENTIALS}`);
-    }
-
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(GOOGLE_APPLICATION_CREDENTIALS);
-    const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
-    const client = await auth.getClient();
-    const token = await client.getAccessToken();
-    if (!token || !token.token) {
-      throw new Error('Failed to obtain access token from service account');
-    }
-    headers.Authorization = `Bearer ${token.token}`;
-  } else if (!useVertexAI) {
-    headers.Authorization = `Bearer ${GOOGLE_API_KEY}`;
-  }
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody)
-  });
-
-  const text = await response.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch (err) {
-    throw new Error(`Gemini request failed: invalid JSON response: ${text.slice(0,200)}`);
-  }
-
-  if (!response.ok) {
-    const errorText = data.error?.message || JSON.stringify(data);
-    throw new Error(`Gemini request failed: ${errorText}`);
-  }
-
-  if (useVertexAI) {
-    const prediction = data.predictions?.[0];
-    const output = prediction?.content || prediction?.candidates?.[0]?.content;
-    if (!output) {
-      throw new Error('No response returned from Gemini');
-    }
-    return output;
-  }
-
-  const candidate = data.candidates?.[0];
-  const output = candidate?.output || candidate?.content || data.output?.[0]?.content;
-  if (!output) {
-    throw new Error('No response returned from Gemini');
-  }
-
-  return output;
-};
-
-const callHuggingFace = async (prompt) => {
-  if (!HUGGINGFACE_API_KEY) {
-    throw new Error('Missing HUGGINGFACE_API_KEY in environment');
-  }
-
-  const isV1 = HUGGINGFACE_API_HOST.includes('/v1');
-  let endpoint;
-  let requestBody;
-
-  if (isV1) {
-    endpoint = `https://${HUGGINGFACE_API_HOST}/chat/completions`;
-    requestBody = JSON.stringify({
-      model: HUGGINGFACE_MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.2,
-      max_tokens: 256
-    });
-  } else {
-    const encodedModelPath = HUGGINGFACE_MODEL.split('/').map(encodeURIComponent).join('/');
-    endpoint = `https://${HUGGINGFACE_API_HOST}/models/${encodedModelPath}`;
-    requestBody = JSON.stringify({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 256,
-        temperature: 0.2,
-        top_p: 0.95,
-        repetition_penalty: 1.05
-      }
-    });
-  }
-
-  const maxAttempts = 3;
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.debug(`HuggingFace request (attempt ${attempt}/${maxAttempts})`, {
-        endpoint,
-        model: HUGGINGFACE_MODEL,
-        provider: HUGGINGFACE_API_HOST,
-        headers: {
-          Authorization: `Bearer ${HUGGINGFACE_API_KEY?.slice(0, 8)}...`,
-          'Content-Type': 'application/json'
-        },
-        bodyPreview: requestBody.slice(0, 400)
-      });
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: requestBody
-      });
-
-      const responseText = await response.text();
-      console.debug('HuggingFace raw response', {
-        endpoint,
-        status: response.status,
-        statusText: response.statusText,
-        contentType: response.headers.get('content-type'),
-        textPreview: responseText.slice(0, 500)
-      });
-
-      let data;
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseErr) {
-          console.error('Hugging Face invalid JSON response', { endpoint, responseText: responseText.slice(0, 500), parseErr: parseErr.message });
-          throw new Error(`Hugging Face returned invalid JSON (status ${response.status} ${response.statusText}): ${responseText.slice(0, 200)}`);
-        }
-      }
-
-      if (!response.ok) {
-        const errorText = data?.error?.message || data?.error || data?.detail || responseText.slice(0, 400);
-        throw new Error(`Hugging Face request failed: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      if (!data) {
-        console.error('Hugging Face response was not JSON', { endpoint, responseText: responseText.slice(0, 500) });
-        throw new Error(`Hugging Face returned non-JSON response: ${responseText.slice(0, 200)}`);
-      }
-
-      console.debug('HuggingFace response', { status: response.status, statusText: response.statusText, body: data });
-
-      let output = '';
-      if (isV1) {
-        if (data?.choices?.[0]?.message?.content) {
-          output = data.choices[0].message.content;
-        }
-      } else {
-        if (Array.isArray(data) && data[0]?.generated_text) {
-          output = data[0].generated_text;
-        } else if (typeof data.generated_text === 'string') {
-          output = data.generated_text;
-        } else if (typeof data?.[0]?.generated_text === 'string') {
-          output = data[0].generated_text;
-        } else if (typeof data?.generated_text === 'string') {
-          output = data.generated_text;
-        }
-      }
-
-      if (!output) {
-        throw new Error(`No response returned from Hugging Face: ${JSON.stringify(data).slice(0,200)}`);
-      }
-
-      return output;
-    } catch (err) {
-      console.warn(`HuggingFace attempt ${attempt} failed:`, err.message || err);
-      lastError = err;
-      if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
-  }
-
-  throw lastError;
-};
-
-const callChatGPT = async (prompt) => {
-  if (!OPENAI_API_KEY) {
-    throw new Error('Missing OPENAI_API_KEY in environment');
-  }
-
-  const endpoint = 'https://api.openai.com/v1/chat/completions';
-  const requestBody = JSON.stringify({
-    model: OPENAI_MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: 'You are an expert product assistant. Answer the user question using only the product information provided in the prompt.'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ],
-    temperature: 0.2,
-    max_tokens: 300,
-    top_p: 0.95
-  });
-
-  console.debug('ChatGPT request', {
-    endpoint,
-    model: OPENAI_MODEL,
-    bodyPreview: requestBody.slice(0, 400)
-  });
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: requestBody
-  });
-
-  const responseText = await response.text();
-  console.debug('ChatGPT raw response', {
-    endpoint,
-    status: response.status,
-    statusText: response.statusText,
-    contentType: response.headers.get('content-type'),
-    textPreview: responseText.slice(0, 500)
-  });
-
-  let data;
-  try {
-    data = JSON.parse(responseText);
-  } catch (err) {
-    throw new Error(`ChatGPT returned invalid JSON: ${responseText.slice(0,200)}`);
-  }
-
-  if (!response.ok) {
-    const errorText = data.error?.message || JSON.stringify(data);
-    throw new Error(`ChatGPT request failed: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  const answer = data.choices?.[0]?.message?.content || data.choices?.[0]?.text;
-  if (!answer) {
-    throw new Error(`No response returned from ChatGPT: ${JSON.stringify(data).slice(0,200)}`);
-  }
-
-  return answer;
-};
-
-const callAI = async (prompt) => {
-  const provider = AI_PROVIDER;
-  const isAuto = provider === 'auto';
-  const tryGemini = provider === 'gemini' || isAuto;
-  const tryHuggingFace = provider === 'huggingface' || isAuto;
-  let geminiError;
-
-  if (tryGemini) {
-    try {
-      const answer = await callGemini(prompt);
-      return { provider: 'Gemini', answer };
-    } catch (err) {
-      geminiError = err;
-      if (!tryHuggingFace) {
-        throw err;
-      }
-    }
-  }
-
-  const tryChatGPT = provider === 'chatgpt' || provider === 'openai' || isAuto;
-  let chatGPTError;
-
-  if (tryChatGPT) {
-    try {
-      const answer = await callChatGPT(prompt);
-      return { provider: 'ChatGPT', answer };
-    } catch (err) {
-      chatGPTError = err;
-      if (!tryHuggingFace) {
-        throw err;
-      }
-    }
-  }
-
-  if (tryHuggingFace) {
-    try {
-      const answer = await callHuggingFace(prompt);
-      return { provider: 'Hugging Face', answer };
-    } catch (err) {
-      const combinedMessage = chatGPTError ? `ChatGPT failed: ${chatGPTError.message}. Hugging Face failed: ${err.message}` : err.message;
-      throw new Error(combinedMessage);
-    }
-  }
-
-  throw new Error('No AI provider configured. Set AI_PROVIDER=gemini|huggingface|auto and provide the required credentials.');
+  return `${product.title} is a ${product.brand || 'Generic'} product in the ${product.category} category. ${product.description || 'No description is listed.'} Specifications: ${specs}. It is priced at Rs. ${price}.`;
 };
 
 exports.answerQuestion = async (req, res) => {
@@ -368,107 +57,70 @@ exports.answerQuestion = async (req, res) => {
       return res.status(400).json({ message: 'productId and question are required' });
     }
 
-    const id = parseInt(productId, 10);
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-
+    const result = await pool.query('SELECT * FROM products WHERE id = $1', [parseInt(productId, 10)]);
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    const product = result.rows[0];
-    const productInfo = {
-      title: product.title,
-      category: product.category,
-      description: product.description,
-      price: Number(product.price),
-      discountPercentage: Number(product.discount_percentage),
-      stock: product.stock,
-      availabilityStatus: product.availability_status,
-      brand: product.brand,
-      shippingInformation: product.shipping_information
-    };
-
-    const prompt = buildPrompt(productInfo, question.trim());
-    const { provider, answer } = await callAI(prompt);
-
-    res.json({ answer: answer.trim(), provider });
-  } catch (err) {
-    console.error('AI QA error:', err);
-    res.status(500).json({ message: err.message || 'AI request failed' });
+    res.json({
+      answer: answerProductQuestion(result.rows[0], question.trim()),
+      provider: 'Product Catalog'
+    });
+  } catch (error) {
+    console.error('Product question error:', error);
+    res.status(500).json({ message: error.message || 'Product question failed' });
   }
+};
+
+const buildRecommendationReason = (entry, budget) => {
+  const reasons = [];
+  if (entry.matches.length > 0) reasons.push(`matches ${entry.matches.slice(0, 3).join(', ')}`);
+  if (entry.product.category) reasons.push(`category: ${entry.product.category}`);
+  if (budget !== null && entry.inBudget) reasons.push('within your budget');
+  if (Number(entry.product.rating) > 0) reasons.push(`rated ${Number(entry.product.rating).toFixed(1)}/5`);
+  return reasons.join('; ') || 'closest match in the catalog';
+};
+
+const buildRecommendationAnswer = (requirements, rankedProducts, budget) => {
+  if (rankedProducts.length === 0) {
+    return 'I could not find products to recommend from the current catalog.';
+  }
+
+  const hasBudgetMatch = budget === null || rankedProducts.some((entry) => entry.inBudget);
+  const intro = hasBudgetMatch
+    ? `Based on "${requirements}", these products are the closest matches:`
+    : `I could not find an exact match within Rs. ${budget.toLocaleString('en-IN')}. These are the closest alternatives:`;
+  const lines = rankedProducts.map((entry, index) => {
+    const price = Number(entry.product.price).toLocaleString('en-IN');
+    return `${index + 1}. ${entry.product.title} — Rs. ${price} (${buildRecommendationReason(entry, budget)}).`;
+  });
+  return [intro, ...lines].join('\n');
 };
 
 exports.recommendProducts = async (req, res) => {
   try {
     const { requirements } = req.body;
-
     if (!requirements || !requirements.trim()) {
       return res.status(400).json({ message: 'requirements is required' });
     }
 
     const result = await pool.query('SELECT * FROM products');
-    const productsList = result.rows.map(p => ({
-      id: p.id,
-      title: p.title,
-      category: p.category,
-      price: Number(p.price),
-      description: p.description?.slice(0, 120) + '...',
-      brand: p.brand
-    }));
-
-    const prompt = `You are an expert product assistant. Below is our complete catalog of products:
-${JSON.stringify(productsList, null, 2)}
-
-User Requirements: "${requirements.trim()}"
-
-Based on the user's requirements, recommend the top 1 to 4 products from the catalog above. Provide a friendly conversational response explaining why they are recommended.
-At the very end of your response, output the exact product IDs of the recommended products in this format: [RECOMMENDED_IDS: id1, id2, ...].
-For example: "[RECOMMENDED_IDS: 4, 12]". If no products match, do not output this tag.`;
-
-    const { provider, answer } = await callAI(prompt);
-
-    // Extract recommended IDs using regex
-    let recommendedIds = [];
-    let cleanAnswer = answer;
-    const tagMatch = answer.match(/\[RECOMMENDED_IDS:\s*([\d\s,]+)\]/);
-    if (tagMatch) {
-      recommendedIds = tagMatch[1].split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
-      cleanAnswer = answer.replace(/\[RECOMMENDED_IDS:\s*[\d\s,]+\]/, '').trim();
-    }
-
-    // Find the corresponding products in the database
-    let recommendedProducts = [];
-    if (recommendedIds.length > 0) {
-      const productsRes = await pool.query('SELECT * FROM products WHERE id = ANY($1)', [recommendedIds]);
-      recommendedProducts = productsRes.rows.map(p => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        category: p.category,
-        price: Number(p.price),
-        discountPercentage: Number(p.discount_percentage),
-        rating: Number(p.rating),
-        stock: p.stock,
-        brand: p.brand,
-        sku: p.sku,
-        weight: Number(p.weight),
-        warrantyInformation: p.warranty_information,
-        shippingInformation: p.shipping_information,
-        availabilityStatus: p.availability_status,
-        thumbnail: p.thumbnail,
-        images: p.images,
-        reviews: p.reviews,
-        dimensions: p.dimensions
-      }));
-    }
+    const ranked = recommendProducts(result.rows, requirements.trim());
+    const budget = parseBudget(requirements.trim());
+    const inStock = ranked.filter((entry) => Number(entry.product.stock) > 0);
+    const available = inStock.length > 0 ? inStock : ranked;
+    const budgetMatches = budget === null ? available : available.filter((entry) => entry.inBudget);
+    const candidates = budgetMatches.length > 0 ? budgetMatches : available;
+    const relevantCandidates = candidates.filter((entry) => entry.matches.length > 0 || entry.score >= 0.3);
+    const selected = (relevantCandidates.length > 0 ? relevantCandidates : candidates).slice(0, 4);
 
     res.json({
-      answer: cleanAnswer,
-      recommendedProducts,
-      provider
+      answer: buildRecommendationAnswer(requirements.trim(), selected, budget),
+      recommendedProducts: selected.map((entry) => toProductResponse(entry.product)),
+      provider: 'Content-Based Recommendation'
     });
-  } catch (err) {
-    console.error('AI Product Recommendation error:', err);
-    res.status(500).json({ message: err.message || 'AI request failed' });
+  } catch (error) {
+    console.error('Content-based recommendation error:', error);
+    res.status(500).json({ message: error.message || 'Recommendation failed' });
   }
 };
