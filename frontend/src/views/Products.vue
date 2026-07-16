@@ -18,7 +18,7 @@
 
           <div class="relative" ref="sortMenuRef">
             <button type="button" @click.stop="toggleSortOpen" class="flex items-center justify-between min-w-[220px] rounded-full border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-200 transition hover:border-slate-600">
-              <span>Sort</span>
+              <span>{{ currentSortLabel }}</span>
               <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
@@ -122,7 +122,7 @@ const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 const cartStore = useCartStore();
-const selectedTab = ref(route.params.category);
+const selectedTab = ref(route.meta.isDeals ? 'deals' : route.params.category);
 const selectedProductList = ref([]);
 const products = inject('products');
 const searchQuery = ref('');
@@ -131,7 +131,7 @@ const sortOption = ref('featured');
 const availableCategories = [
   "laptops", "smartphones", "tablets", "mobile-accessories",
   "home-decoration", "furniture", "kitchen-accessories",
-  "sports-accessories", "sunglasses"
+  "sports-accessories", "sunglasses", "deals"
 ];
 
 const sortOptions = [
@@ -158,8 +158,14 @@ const closeSort = () => {
 
 const isValid = computed(() => availableCategories.includes(selectedTab.value));
 const categoryTitle = computed(() => {
+  if (selectedTab.value === 'deals') return 'Special Offers';
   const label = selectedTab.value?.replace(/-/g, ' ');
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Products';
+});
+
+const currentSortLabel = computed(() => {
+  const option = sortOptions.find(o => o.value === sortOption.value);
+  return option ? option.label : 'Sort';
 });
 
 const filteredProducts = computed(() => {
@@ -187,9 +193,15 @@ const filteredProducts = computed(() => {
 });
 
 const getNewProductList = () => {
-  selectedProductList.value = products.value.filter(
-    (product) => product.category === selectedTab.value
-  );
+  if (selectedTab.value === 'deals') {
+    selectedProductList.value = products.value.filter(
+      (product) => Number(product.discountPercentage || 0) > 10
+    );
+  } else {
+    selectedProductList.value = products.value.filter(
+      (product) => product.category === selectedTab.value
+    );
+  }
 };
 
 const getDiscountedPrice = (product) => {
@@ -199,7 +211,9 @@ const getDiscountedPrice = (product) => {
 };
 
 const goToProduct = (id, selectedTab) => {
-  router.push(`/${selectedTab}/${id}`);
+  const product = products.value?.find((p) => p.id === id);
+  const category = product ? product.category : selectedTab;
+  router.push(`/${category}/${id}`);
 };
 
 const addToCart = (id, title, thumbnail, price) => {
@@ -232,7 +246,7 @@ onUnmounted(() => {
 });
 
 watchEffect(() => {
-  selectedTab.value = route.params.category;
+  selectedTab.value = route.meta.isDeals ? 'deals' : route.params.category;
   getNewProductList();
 });
 
