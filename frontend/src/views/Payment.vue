@@ -1,14 +1,18 @@
 <template>
-  <div style="background: var(--cream-50); min-height: 100vh; padding-top: 7rem;">
-    <div class="max-w-6xl mx-auto px-6 lg:px-12 pb-16">
-      <div class="mb-8">
-        <p class="section-label mb-2">Checkout</p>
-        <h1 style="font-family: var(--font-display); font-size: clamp(2rem,4vw,2.8rem); color: var(--stone-900); font-weight:400; letter-spacing:-0.02em;">Payment</h1>
+  <div style="background: var(--cream-50); min-height: 100vh; position: relative; overflow: hidden; padding-top: 8rem;">
+    <!-- Decorative Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="max-w-[1100px] mx-auto px-6 lg:px-8 pb-20 relative z-10">
+      <div class="mb-10 text-center">
+        <p class="section-label mb-2 mx-auto" style="color: var(--amber-600);">Secure Checkout</p>
+        <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem,5vw,3.5rem); color: var(--stone-900); font-weight:400; letter-spacing:-0.03em; line-height: 1.1;">Complete your<br /><em>order.</em></h1>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div class="checkout-grid">
         <!-- Left: Form & Methods -->
-        <div class="lg:col-span-2 flex flex-col gap-6">
+        <div class="flex flex-col gap-6">
           <!-- Customer Details -->
           <div class="pay-card">
             <h2 class="pay-card-title">Customer Details</h2>
@@ -21,9 +25,9 @@
                 <label class="field-label">Phone Number</label>
                 <input type="tel" v-model="customerDetails.phone" placeholder="98XXXXXXXX" class="field-input" />
               </div>
-              <div class="field md:col-span-2">
+              <div class="field sm:col-span-2">
                 <label class="field-label">Delivery Address</label>
-                <input type="text" v-model="customerDetails.address" placeholder="Street, City, District" class="field-input" />
+                <input type="text" v-model="customerDetails.address" placeholder="Street, City, District" class="field-input" required />
               </div>
             </div>
           </div>
@@ -68,32 +72,33 @@
           </div>
         </div>
 
-        <!-- Order Summary -->
-        <div class="pay-card sticky top-24">
+        <!-- Right: Order Summary -->
+        <div class="pay-card summary-card sticky top-28">
           <h2 class="pay-card-title">Order Summary</h2>
           <div class="summary-lines">
             <div class="summary-line">
-              <span>Subtotal ({{ cartStore.total_buying_item }})</span>
-              <span>Rs. {{ cartStore.subTotal }}</span>
+              <span>Subtotal ({{ cartStore.total_buying_item }} items)</span>
+              <span>Rs. {{ cartStore.subTotal.toLocaleString('en-IN') }}</span>
             </div>
             <div class="summary-line">
               <span>Shipping</span>
-              <span>Rs. {{ cartStore.shippingCost }}</span>
+              <span>Rs. {{ cartStore.shippingCost.toLocaleString('en-IN') }}</span>
             </div>
           </div>
           <div class="summary-total">
             <span>Total</span>
-            <span>Rs. {{ cartStore.totalCost }}</span>
+            <span style="color: var(--amber-600);">Rs. {{ cartStore.totalCost.toLocaleString('en-IN') }}</span>
           </div>
+          
           <!-- Cart items preview -->
-          <div class="mt-4 pt-4 flex flex-col gap-3" style="border-top: 1px solid var(--cream-200);">
-            <div v-for="item in cartStore.item_details.filter(i => i.checked)" :key="item.id" class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style="background: var(--cream-100); border: 1px solid var(--cream-200); padding: 4px;">
-                <img :src="item.image" :alt="item.title" class="w-full h-full object-contain" />
+          <div class="mt-5 pt-5 flex flex-col gap-4" style="border-top: 1px dashed var(--cream-200);">
+            <div v-for="item in cartStore.item_details.filter(i => i.checked)" :key="item.id" class="flex items-center gap-4 group">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105" style="background: white; border: 1px solid var(--cream-200); padding: 4px; box-shadow: var(--shadow-sm);">
+                <img :src="item.image" :alt="item.title" class="w-full h-full object-contain mix-blend-multiply" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-xs font-medium truncate" style="color: var(--stone-700);">{{ item.title }}</p>
-                <p class="text-[10px]" style="color: var(--stone-400);">Qty: {{ item.quantity }}</p>
+                <p class="text-sm font-semibold truncate" style="color: var(--stone-800);">{{ item.title }}</p>
+                <p class="text-[11px] font-bold uppercase tracking-widest mt-0.5" style="color: var(--stone-400);">Qty: {{ item.quantity }}</p>
               </div>
             </div>
           </div>
@@ -156,67 +161,104 @@ const handleEsewa = () => {
 </script>
 
 <style scoped>
+/* ── Layout & Orbs ───────────────────────────────────────── */
+.checkout-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+@media (max-width: 860px) { .checkout-grid { grid-template-columns: 1fr; } }
+
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); pointer-events: none; z-index: 0;
+}
+.orb-1 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(251,191,36,0.12), transparent 70%);
+  top: -50px; right: 10%;
+}
+.orb-2 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(28,25,23,0.05), transparent 70%);
+  bottom: 10%; left: -40px;
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
 .pay-card {
   background: white; border: 1px solid var(--cream-200);
-  border-radius: 20px; padding: 1.75rem;
-  box-shadow: var(--shadow-sm);
+  border-radius: 24px; padding: 2.25rem;
+  box-shadow: var(--shadow-md);
 }
+.summary-card { background: var(--cream-100); border-color: var(--cream-200); }
+
 .pay-card-title {
-  font-family: var(--font-display); font-size: 1.3rem;
+  font-family: var(--font-display); font-size: 1.4rem;
   color: var(--stone-900); font-weight: 400; letter-spacing: -0.01em;
-  margin-bottom: 1.25rem; padding-bottom: 1rem;
+  margin-bottom: 1.5rem; padding-bottom: 1rem;
   border-bottom: 1px solid var(--cream-200);
 }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field-label { font-size: 0.75rem; font-weight: 700; color: var(--stone-500); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ── Form Fields ──────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field-label { font-size: 0.72rem; font-weight: 700; color: var(--stone-500); text-transform: uppercase; letter-spacing: 0.12em; }
 .field-input {
-  border: 1px solid var(--cream-200); border-radius: 10px; padding: 0.75rem 1rem;
+  border: 1px solid var(--cream-200); border-radius: 12px; padding: 0.8rem 1rem;
   font-size: 0.9rem; color: var(--stone-800); background: var(--cream-50);
-  outline: none; transition: border-color 0.2s; font-family: var(--font-body);
+  outline: none; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; font-family: var(--font-body);
+  width: 100%;
 }
-.field-input:focus { border-color: var(--stone-400); background: white; }
+.field-input:focus { border-color: var(--stone-400); background: white; box-shadow: 0 0 0 3px rgba(28,25,23,0.05); }
 .field-input::placeholder { color: var(--stone-400); }
+
+/* ── Payment Methods ──────────────────────────────────────── */
 .method-card {
-  position: relative; border-radius: 14px; padding: 1.25rem;
+  position: relative; border-radius: 16px; padding: 1.25rem;
   border: 1.5px solid var(--cream-200); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  transition: all 0.2s; background: var(--cream-50);
+  display: flex; flex-direction: column; align-items: center; gap: 0.875rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background: var(--cream-50);
 }
-.method-card:hover { border-color: var(--cream-300); background: white; }
-.method-card.selected { border-color: var(--stone-800); background: white; }
-.method-card.selected-esewa { border-color: #41A124; background: white; }
+.method-card:hover { border-color: var(--cream-300); background: white; transform: translateY(-2px); }
+.method-card.selected { border-color: var(--stone-800); background: white; box-shadow: 0 4px 12px rgba(28,25,23,0.08); }
+.method-card.selected-esewa { border-color: #41A124; background: white; box-shadow: 0 4px 12px rgba(65,161,36,0.15); }
 .method-icon {
-  width: 52px; height: 52px; border-radius: 50%;
-  background: var(--cream-100); display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--cream-200);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: white; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--cream-200); box-shadow: var(--shadow-sm);
 }
 .esewa-icon { background: rgba(65,161,36,0.08); border-color: rgba(65,161,36,0.2); }
-.method-name { font-size: 0.8rem; font-weight: 700; color: var(--stone-600); text-align: center; }
+.method-name { font-size: 0.85rem; font-weight: 700; color: var(--stone-600); text-align: center; letter-spacing: -0.01em; }
 .method-check {
-  position: absolute; top: 10px; right: 10px;
-  width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; top: 12px; right: 12px;
+  width: 22px; height: 22px; border-radius: 50%;
   background: var(--stone-900); color: white;
-  font-size: 0.6rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
 }
 .method-check.esewa-check { background: #41A124; }
 .method-info {
-  background: var(--cream-100); border-radius: 10px; padding: 1rem;
-  border: 1px solid var(--cream-200); margin-bottom: 1.25rem;
+  background: var(--cream-50); border-radius: 12px; padding: 1.25rem;
+  border: 1px solid var(--cream-200); margin-bottom: 1.5rem; text-align: center;
 }
 .method-desc { font-size: 0.875rem; color: var(--stone-600); line-height: 1.6; }
+
+/* ── Buttons ──────────────────────────────────────────────── */
 .pay-btn {
-  width: 100%; padding: 1rem; border-radius: 14px; border: none;
+  width: 100%; padding: 1.1rem; border-radius: 100px; border: none;
   font-size: 0.95rem; font-weight: 700; cursor: pointer;
   background: var(--stone-900); color: var(--cream-50);
-  transition: background 0.2s, transform 0.2s;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(28,25,23,0.18);
 }
-.pay-btn:hover { background: var(--stone-700); transform: translateY(-1px); }
-.pay-btn.pay-btn-esewa { background: #41A124; }
-.pay-btn.pay-btn-esewa:hover { background: #368a1e; }
-.summary-lines { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
-.summary-line { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--stone-500); font-weight: 500; }
+.pay-btn:hover { background: var(--stone-700); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(28,25,23,0.22); }
+.pay-btn.pay-btn-esewa { background: #41A124; box-shadow: 0 4px 16px rgba(65,161,36,0.25); }
+.pay-btn.pay-btn-esewa:hover { background: #368a1e; box-shadow: 0 8px 24px rgba(65,161,36,0.3); }
+
+/* ── Order Summary ────────────────────────────────────────── */
+.summary-lines { display: flex; flex-direction: column; gap: 0.875rem; margin-bottom: 1.25rem; }
+.summary-line { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--stone-600); font-weight: 500; }
 .summary-total {
-  display: flex; justify-content: space-between; padding: 1rem 0;
-  border-top: 1px solid var(--cream-200); font-size: 1.1rem; font-weight: 700; color: var(--stone-900);
+  display: flex; justify-content: space-between; padding: 1.25rem 0 0;
+  border-top: 1px solid var(--cream-200); font-size: 1.2rem; font-weight: 700; color: var(--stone-900);
 }
 </style>
