@@ -27,6 +27,9 @@ import { useRouter } from 'vue-router';
 import { onMounted, inject } from 'vue';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
+import { verifyEsewaPayment } from '@/services/esewaService';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const router = useRouter();
 const cartStore = useCartStore();
@@ -55,7 +58,17 @@ onMounted(async () => {
           customerInfo = pendingData.customerInfo;
       }
 
-      await fetch('http://localhost:5000/api/orders', {
+      const encodedResponse = new URLSearchParams(window.location.search).get('data');
+      if (!encodedResponse) {
+          throw new Error('Missing eSewa payment response');
+      }
+
+      const payment = await verifyEsewaPayment(encodedResponse);
+      if (pendingData.amount !== undefined && Number(payment.total_amount) !== Number(pendingData.amount)) {
+          throw new Error('eSewa payment amount does not match the order');
+      }
+
+      const orderResponse = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,9 +76,17 @@ onMounted(async () => {
         },
         body: JSON.stringify({ items, customerInfo, status: 'Paid' })
       });
+
+      if (!orderResponse.ok) {
+        const orderError = await orderResponse.json().catch(() => ({}));
+        throw new Error(orderError.message || 'Unable to create paid order');
+      }
+
       localStorage.removeItem('pending_order');
     } catch (err) {
       console.error("Error deducting stock for eSewa order:", err);
+      localStorage.removeItem('pending_order');
+      router.replace('/failure');
     }
   }
 

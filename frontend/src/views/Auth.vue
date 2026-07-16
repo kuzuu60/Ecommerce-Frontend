@@ -13,9 +13,10 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-2 bg-slate-950 rounded-xl p-1 mb-7">
+      <div class="grid grid-cols-3 bg-slate-950 rounded-xl p-1 mb-7">
         <button @click="setMode(false)" :class="tabClass(!isSignUp)">Sign in</button>
         <button @click="setMode(true)" :class="tabClass(isSignUp)">Sign up</button>
+        <button @click="router.push('/admin/login')" class="rounded-lg py-2.5 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors">Admin</button>
       </div>
 
       <form @submit.prevent="submitForm" class="space-y-5">

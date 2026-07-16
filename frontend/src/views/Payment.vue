@@ -116,8 +116,6 @@ const customerDetails = ref({
 });
 
 // link totalAmount to store (for Khalti/eSewa if needed)
-const totalAmount = cartStore.totalCost;
-
 const validateForm = () => {
     if (!customerDetails.value.fullName || !customerDetails.value.address || !customerDetails.value.phone) {
         toast.warning("Please fill in all customer details (Name, Address, Phone).");
@@ -195,7 +193,7 @@ const processOrder = async (isEsewa = false) => {
     }
 };
 
-const handleEsewa = () => {
+const handleEsewa = async () => {
     const orderItems = cartStore.item_details
         .filter(item => item.checked)
         .map(item => ({
@@ -211,12 +209,19 @@ const handleEsewa = () => {
     // Save for deduction on success page
     localStorage.setItem('pending_order', JSON.stringify({
         items: orderItems,
-        customerInfo: customerDetails.value
+        customerInfo: customerDetails.value,
+        amount: cartStore.totalCost,
     }));
     
     // Find a representative product ID or use 'multi_order'
     const productId = orderItems[0].id;
-    initiateEsewaPayment(totalAmount, String(productId));
+    try {
+        await initiateEsewaPayment(cartStore.totalCost, String(productId));
+    } catch (error) {
+        localStorage.removeItem('pending_order');
+        console.error('Unable to start eSewa payment:', error);
+        toast.error(error.message || 'Unable to start eSewa payment. Please try again.');
+    }
 };
 </script>
 

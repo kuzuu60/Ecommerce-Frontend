@@ -34,6 +34,49 @@ exports.login = async (req, res) => {
     }
 };
 
+exports.adminRegister = async (req, res) => {
+    const username = req.body.username?.trim();
+    const { password, setupKey } = req.body;
+
+    if (!username || !password || !setupKey) {
+        return res.status(400).json({ message: 'Username, password, and admin setup key are required' });
+    }
+
+    if (!process.env.ADMIN_SECRET_KEY || setupKey !== process.env.ADMIN_SECRET_KEY) {
+        return res.status(403).json({ message: 'Invalid admin setup key' });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({ message: 'Admin password must be at least 8 characters' });
+    }
+
+    try {
+        const existingAdmin = await pool.query('SELECT id FROM admins WHERE username = $1', [username]);
+        if (existingAdmin.rowCount > 0) {
+            return res.status(409).json({ message: 'An admin with this username already exists' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const { rows } = await pool.query(
+            'INSERT INTO admins (username, password, role) VALUES ($1, $2, $3) RETURNING username, role',
+            [username, hashedPassword, 'admin']
+        );
+
+        const admin = rows[0];
+        const token = jwt.sign({ username: admin.username, role: admin.role }, process.env.JWT_SECRET, {
+            expiresIn: '8h'
+        });
+
+        return res.status(201).json({
+            token,
+            user: { username: admin.username, role: admin.role }
+        });
+    } catch (err) {
+        console.error('Error during admin registration:', err);
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 exports.register = async (req, res) => {
     const { fullName, email, password } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();

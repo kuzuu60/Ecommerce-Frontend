@@ -4,22 +4,35 @@
       <button @click="router.push('/')" class="mb-6 text-sm text-slate-400 transition-colors hover:text-blue-400">
         ← Back to storefront
       </button>
-      <h1 class="text-3xl font-semibold text-white mb-6 text-center">Admin Login</h1>
+      <h1 class="text-3xl font-semibold text-white mb-2 text-center">{{ isRegistering ? 'Create Admin' : 'Admin Login' }}</h1>
+      <p class="text-center text-sm text-slate-500 mb-6">
+        {{ isRegistering ? 'Create an administrator account using the setup key.' : 'Sign in to manage the Luxe storefront.' }}
+      </p>
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
           <label class="block text-sm font-medium text-slate-400 mb-2">Username</label>
-          <input v-model="username" type="text" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
+          <input v-model.trim="username" type="text" autocomplete="username" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-400 mb-2">Password</label>
-          <input v-model="password" type="password" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
+          <input v-model="password" type="password" :autocomplete="isRegistering ? 'new-password' : 'current-password'" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
+        </div>
+        <div v-if="isRegistering">
+          <label class="block text-sm font-medium text-slate-400 mb-2">Admin setup key</label>
+          <input v-model="setupKey" type="password" autocomplete="off" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
         </div>
         <button type="submit" :disabled="loading" class="w-full rounded-2xl bg-blue-600 px-4 py-3 text-white font-semibold hover:bg-blue-500 transition-colors disabled:opacity-50">
-          {{ loading ? 'Signing in...' : 'Sign in' }}
+          {{ loading ? 'Please wait...' : isRegistering ? 'Create admin account' : 'Sign in' }}
         </button>
       </form>
       <p v-if="error" class="mt-4 text-sm text-red-400">{{ error }}</p>
-      <p class="mt-6 text-sm text-slate-500">Only authorized admin users can access the dashboard.</p>
+      <p class="mt-6 text-center text-sm text-slate-500">
+        {{ isRegistering ? 'Already have an admin account?' : 'Need to create an admin account?' }}
+        <button type="button" @click="toggleRegistration" class="text-blue-400 hover:text-blue-300 font-semibold ml-1">
+          {{ isRegistering ? 'Sign in' : 'Create admin' }}
+        </button>
+      </p>
+      <p class="mt-3 text-center text-xs text-slate-600">Only authorized users with the setup key can create administrators.</p>
     </div>
   </div>
 </template>
@@ -36,18 +49,31 @@ const toast = useToast();
 
 const username = ref('');
 const password = ref('');
+const setupKey = ref('');
+const isRegistering = ref(false);
 const loading = ref(false);
 const error = ref(null);
+
+const toggleRegistration = () => {
+  isRegistering.value = !isRegistering.value;
+  password.value = '';
+  setupKey.value = '';
+  error.value = null;
+};
 
 const handleLogin = async () => {
   loading.value = true;
   error.value = null;
 
   try {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
+    const endpoint = isRegistering.value ? 'admin-register' : 'login';
+    const body = isRegistering.value
+      ? { username: username.value, password: password.value, setupKey: setupKey.value }
+      : { username: username.value, password: password.value };
+    const res = await fetch(`http://localhost:5000/api/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.value, password: password.value })
+      body: JSON.stringify(body)
     });
 
     if (!res.ok) {
@@ -58,7 +84,7 @@ const handleLogin = async () => {
 
     const data = await res.json();
     adminStore.setAdmin(data.token, data.user);
-    toast.success('Logged in successfully');
+    toast.success(isRegistering.value ? 'Admin account created successfully' : 'Logged in successfully');
     await router.replace('/admin');
   } catch (err) {
     console.error(err);
