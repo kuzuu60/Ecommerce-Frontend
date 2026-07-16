@@ -8,6 +8,7 @@ import Contact from "@/views/Contact.vue";
 import PaymentSuccess from "@/views/PaymentSuccess.vue";
 import PaymentFailure from "@/views/PaymentFailure.vue";
 import AdminLogin from "@/views/AdminLogin.vue";
+import Assistant from "@/views/Assistant.vue";
 
 const routes = [
   {
@@ -15,6 +16,8 @@ const routes = [
     component: Layout,
     children: [
       { path: "", component: Home },
+      { path: "/deals", component: Products, meta: { isDeals: true } },
+      { path: "/assistant", component: Assistant },
       { path: "/:category", component: Products },
       { path: "/:category/:id", component: ProductDetail },
       { path: "/cart", component: Cart },

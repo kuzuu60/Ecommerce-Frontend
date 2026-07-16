@@ -8,7 +8,7 @@
           From everyday gadgets to elevated home pieces, discover a refined collection designed for comfort, style, and convenience.
         </p>
         <div class="hero-actions">
-          <button @click="router.push('/laptops')">Shop now</button>
+          <button @click="router.push('/deals')">Shop now</button>
           <button class="secondary-btn" @click="router.push('/contact')">Contact us</button>
         </div>
       </div>
