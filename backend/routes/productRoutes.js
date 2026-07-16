@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
+const { authenticateAdmin } = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -23,8 +24,8 @@ const upload = multer({ storage: storage });
 
 router.get('/', productController.getAllProducts);
 router.get('/:id', productController.getProductById);
-router.post('/', upload.single('image'), productController.createProduct);
-router.put('/:id', upload.single('image'), productController.updateProduct);
-router.delete('/:id', productController.deleteProduct);
+router.post('/', authenticateAdmin, upload.single('image'), productController.createProduct);
+router.put('/:id', authenticateAdmin, upload.single('image'), productController.updateProduct);
+router.delete('/:id', authenticateAdmin, productController.deleteProduct);
 
 module.exports = router;

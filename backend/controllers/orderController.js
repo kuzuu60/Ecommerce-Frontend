@@ -1,5 +1,6 @@
 const { getProducts, saveProducts, getOrders, saveOrders } = require('../utils/dataHandler');
 const { createOrder } = require('../models/orders');
+const { saveOrderDb, getOrdersDb } = require('../models/orderModel');
 
 exports.createOrder = async (req, res) => {
     try {
@@ -64,15 +65,47 @@ exports.createOrder = async (req, res) => {
         orders.push(newOrder);
         saveOrders(orders);
 
+        try {
+            await saveOrderDb({
+                id: newOrder.id,
+                name: customerInfo.fullName,
+                phone: customerInfo.phone,
+                address: customerInfo.address,
+                items,
+                totalAmount,
+                status: newOrder.status,
+                createdAt: newOrder.createdAt
+            });
+        } catch (dbErr) {
+            console.error('Error saving order to database:', dbErr);
+        }
+
         res.json({ message: 'Order placed successfully', orderId: newOrder.id });
     } catch (err) {
         console.error("Error placing order:", err);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
-exports.getAllOrders = (req, res) => {
+exports.getAllOrders = async (req, res) => {
     try {
-        const orders = getOrders();
+        let orders = getOrders();
+        try {
+            const { rows } = await getOrdersDb();
+            orders = rows.map(order => ({
+                id: order.order_id,
+                customerInfo: {
+                    fullName: order.name,
+                    phone: order.phone,
+                    address: order.address
+                },
+                items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
+                totalAmount: parseFloat(order.total_amount),
+                status: order.status,
+                createdAt: order.created_at
+            }));
+        } catch (dbErr) {
+            console.error('Error reading orders from DB:', dbErr);
+        }
         res.json(orders);
     } catch (err) {
         console.error("Error fetching orders:", err);

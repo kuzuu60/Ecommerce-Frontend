@@ -1,6 +1,11 @@
 <template>
   <div class="p-6 bg-slate-950 min-h-screen text-slate-100">
-    <h1 class="text-3xl font-bold mb-8 text-blue-400">Customer Orders</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+      <h1 class="text-3xl font-bold text-blue-400">Customer Orders</h1>
+      <button @click="handleLogout" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition-all">
+        Logout
+      </button>
+    </div>
     
     <div v-if="loading" class="text-center py-10">
       <p class="text-slate-400">Loading orders...</p>
@@ -58,15 +63,24 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import { useAdminStore } from '@/store/adminStore';
 
+const router = useRouter();
+const adminStore = useAdminStore();
 const orders = ref([]);
 const loading = ref(true);
 const toast = useToast();
 
 const fetchOrders = async () => {
     try {
-        const res = await fetch('http://localhost:5000/api/orders');
+        const token = localStorage.getItem('admin_token');
+    const res = await fetch('http://localhost:5000/api/orders', {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : ''
+      }
+    });
         if (!res.ok) throw new Error("Failed to fetch orders");
         const data = await res.json();
         // Sort by newest first
@@ -88,6 +102,11 @@ const formatDate = (dateString) => {
         hour: '2-digit',
         minute: '2-digit'
     });
+};
+
+const handleLogout = () => {
+    adminStore.clearAdmin();
+    router.push('/admin/login');
 };
 
 onMounted(() => {
