@@ -14,7 +14,7 @@
           </div>
           <div class="overflow-hidden">
             <h1 class="hero-h1" ref="heroH1" style="transform: translateY(110%); opacity: 0;">
-              Everything<br /><em class="gradient-text">you love,</em><br />one place.
+              Everything<br /><em class="gradient-text">{{ dynamicText }}</em>,<br />one place.
             </h1>
           </div>
           <div class="overflow-hidden mt-6">
@@ -141,8 +141,50 @@ const categorizedProducts = computed(() => {
 const formatCategory = (slug) =>
   slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
+// ── Text Scramble Animation ───────────────────────────────────
+const dynamicText = ref('you love');
+const words = ['you love', 'you want', 'you need', 'you seek', 'you wish'];
+const chars = '!<>-_\\\\/[]{}—=+*^?#_';
+let currentWordIndex = 0;
+let scrambleInterval = null;
+
+const scrambleText = (targetWord) => {
+  let iterations = 0;
+  const maxIterations = 20;
+  
+  clearInterval(scrambleInterval);
+  
+  scrambleInterval = setInterval(() => {
+    let scrambled = '';
+    for (let i = 0; i < targetWord.length; i++) {
+      if (targetWord[i] === ' ') {
+        scrambled += ' ';
+        continue;
+      }
+      if (i < (iterations / maxIterations) * targetWord.length) {
+        scrambled += targetWord[i];
+      } else {
+        scrambled += chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+    dynamicText.value = scrambled;
+    
+    iterations++;
+    if (iterations > maxIterations) {
+      clearInterval(scrambleInterval);
+      dynamicText.value = targetWord;
+    }
+  }, 35);
+};
+
 // ── GSAP Entrance ─────────────────────────────────────────────
 onMounted(() => {
+  // Start the word cycling loop
+  setInterval(() => {
+    currentWordIndex = (currentWordIndex + 1) % words.length;
+    scrambleText(words[currentWordIndex]);
+  }, 3500);
+
   const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
 
   tl.to(heroLine.value, {
