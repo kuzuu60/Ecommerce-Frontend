@@ -219,7 +219,7 @@ const submitForm = async () => {
   padding: 3rem 2rem; background: var(--cream-50);
 }
 .back-btn {
-  display: inline-flex; align-items: center; gap: 6px; text-sm font-semibold;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 600;
   color: var(--stone-500); margin-bottom: 3rem; transition: color 0.2s;
   background: none; border: none; cursor: pointer; padding: 0;
 }
