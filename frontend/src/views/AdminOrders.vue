@@ -69,7 +69,7 @@ const updatingOrderId = ref(null);
 const fetchOrders = async () => {
     try {
         const token = localStorage.getItem('admin_token');
-    const res = await fetch('http://localhost:5000/api/orders', {
+    const res = await fetch('http://localhost:5001/api/orders', {
       headers: {
         Authorization: token ? `Bearer ${token}` : ''
       }
@@ -101,7 +101,7 @@ const updateOrderStatus = async (order) => {
     updatingOrderId.value = order.id;
     try {
         const token = localStorage.getItem('admin_token');
-        const res = await fetch(`http://localhost:5000/api/orders/${order.id}/status`, {
+        const res = await fetch(`http://localhost:5001/api/orders/${order.id}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

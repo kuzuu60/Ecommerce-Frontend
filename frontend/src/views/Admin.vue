@@ -198,7 +198,7 @@ const loading = ref(false);
 
 const fetchProducts = async () => {
   try {
-    const response = await fetch('http://localhost:5000/api/products');
+    const response = await fetch('http://localhost:5001/api/products');
     if (!response.ok) throw new Error('Failed to fetch products');
     const result = await response.json();
     products.value = result.products.sort((a, b) => b.id - a.id);
@@ -326,7 +326,7 @@ const updateProduct = async () => {
     }
 
     const token = localStorage.getItem('admin_token');
-    const res = await fetch(`http://localhost:5000/api/products/${editId.value}`, {
+    const res = await fetch(`http://localhost:5001/api/products/${editId.value}`, {
       method: 'PUT',
       headers: {
         Authorization: token ? `Bearer ${token}` : ''
@@ -377,7 +377,7 @@ const addProduct = async () => {
     }
 
     const token = localStorage.getItem('admin_token');
-    const res = await fetch('http://localhost:5000/api/products', {
+    const res = await fetch('http://localhost:5001/api/products', {
       method: 'POST',
       headers: {
         Authorization: token ? `Bearer ${token}` : ''
@@ -413,7 +413,7 @@ const handleDeleteConfirm = async () => {
   
   try {
     const token = localStorage.getItem('admin_token');
-    const res = await fetch(`http://localhost:5000/api/products/${id}`, {
+    const res = await fetch(`http://localhost:5001/api/products/${id}`, {
       method: 'DELETE',
       headers: {
         Authorization: token ? `Bearer ${token}` : ''

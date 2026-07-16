@@ -1,110 +1,117 @@
 <template>
-  <div class="bg-slate-950 min-h-screen text-slate-100 py-12 px-6 lg:px-12">
-    <div class="max-w-4xl mx-auto flex flex-col h-[80vh] bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+  <div style="background: var(--cream-50); min-height: 100vh; padding-top: 5.5rem;">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex flex-col" style="height: calc(100vh - 5.5rem);">
+
       <!-- Header -->
-      <div class="px-8 py-6 border-b border-slate-800 bg-slate-900/80 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-          <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+      <div class="assistant-header mb-4">
+        <div class="ai-avatar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--amber-600);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
           </svg>
         </div>
         <div>
-          <h2 class="text-xl font-bold text-slate-100">Product Recommendation Assistant</h2>
-          <p class="text-xs text-slate-400">Describe your needs and find matching products from our catalog.</p>
+          <h1 style="font-family: var(--font-display); font-size: 1.4rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.01em;">Product Assistant</h1>
+          <p style="font-size: 0.75rem; color: var(--stone-400); font-weight: 500;">Describe your needs and we'll find matching products from our catalog</p>
         </div>
       </div>
 
-      <!-- Messages Area -->
-      <div class="flex-1 overflow-y-auto p-8 space-y-6" ref="chatContainerRef">
-        <div v-for="(msg, index) in messages" :key="index" :class="['flex gap-4 max-w-[85%] animate-fade-in', msg.sender === 'user' ? 'ml-auto flex-row-reverse' : '']">
-          <!-- Avatar -->
-          <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0', msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700']">
-            {{ msg.sender === 'user' ? 'U' : 'CB' }}
-          </div>
+      <!-- Chat Container -->
+      <div class="chat-shell flex-1 flex flex-col overflow-hidden">
+        <!-- Messages -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-5" ref="chatContainerRef">
+          <div v-for="(msg, i) in messages" :key="i"
+            :class="['flex gap-3 msg-animate', msg.sender === 'user' ? 'justify-end' : 'justify-start']">
 
-          <!-- Bubble Content -->
-          <div class="space-y-4">
-            <div :class="['px-5 py-3.5 rounded-2xl text-sm leading-relaxed border', msg.sender === 'user' ? 'bg-blue-600 text-white border-blue-500 rounded-tr-none' : 'bg-slate-900 text-slate-300 border-slate-800 rounded-tl-none']">
-              <p class="whitespace-pre-line">{{ msg.text }}</p>
-              <div v-if="msg.provider" class="text-[10px] text-slate-500 mt-2 block text-right">Powered by {{ msg.provider }}</div>
+            <!-- AI Avatar -->
+            <div v-if="msg.sender !== 'user'" class="msg-avatar ai-msg-avatar shrink-0">AI</div>
+
+            <div class="flex flex-col gap-3 max-w-[82%]">
+              <!-- Text Bubble -->
+              <div :class="msg.sender === 'user' ? 'user-bubble' : 'ai-bubble'">
+                <p class="whitespace-pre-line text-sm leading-relaxed">{{ msg.text }}</p>
+                <span v-if="msg.provider" class="provider-tag">via {{ msg.provider }}</span>
+              </div>
+
+              <!-- Product Cards -->
+              <div v-if="msg.products && msg.products.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-[500px]">
+                <div v-for="product in msg.products" :key="product.id"
+                  class="rec-card group" @click="goToProduct(product)">
+                  <div class="rec-img-wrap">
+                    <img :src="product.thumbnail" :alt="product.title" class="rec-img" />
+                    <span v-if="product.discountPercentage > 0" class="rec-discount">-{{ Math.round(product.discountPercentage) }}%</span>
+                  </div>
+                  <div class="rec-body">
+                    <p class="rec-category">{{ product.category }}</p>
+                    <h4 class="rec-name">{{ product.title }}</h4>
+                    <div class="rec-foot">
+                      <div>
+                        <p class="rec-price">Rs. {{ getDiscountedPrice(product).toLocaleString() }}</p>
+                        <p v-if="product.discountPercentage > 0" class="rec-original">Rs. {{ product.price }}</p>
+                      </div>
+                      <button class="rec-add" :disabled="product.stock <= 0" @click.stop="addToCart(product)" title="Add to Cart">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <!-- Recommended Products Grid -->
-            <div v-if="msg.products && msg.products.length" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div v-for="product in msg.products" :key="product.id" class="group bg-slate-900 border border-slate-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-900/10 transition-all duration-300 flex flex-col">
-                <!-- Thumbnail -->
-                <div class="h-40 bg-white p-4 flex items-center justify-center relative overflow-hidden shrink-0" @click="goToProduct(product)">
-                  <img :src="product.thumbnail" :alt="product.title" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 cursor-pointer" />
-                  <div class="absolute top-3 right-3 bg-blue-600 text-white px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider" v-if="product.discountPercentage > 0">
-                    -{{ Math.round(product.discountPercentage) }}%
-                  </div>
-                </div>
+            <!-- User Avatar -->
+            <div v-if="msg.sender === 'user'" class="msg-avatar user-msg-avatar shrink-0">U</div>
+          </div>
 
-                <!-- Info -->
-                <div class="p-4 flex flex-col flex-1">
-                  <h4 class="text-sm font-bold text-slate-100 line-clamp-1 mb-1 group-hover:text-blue-400 transition-colors duration-200 cursor-pointer" @click="goToProduct(product)">
-                    {{ product.title }}
-                  </h4>
-                  <p class="text-xs text-slate-400 mb-3 font-semibold">{{ product.category }}</p>
-                  <p class="text-[10px] text-slate-500 mb-3">Warranty: {{ product.warrantyInformation || 'No warranty' }}</p>
-
-                  <div class="mt-auto flex items-center justify-between">
-                    <div>
-                      <div class="flex items-center gap-1.5">
-                        <span class="text-sm font-extrabold text-slate-100">Rs. {{ getDiscountedPrice(product) }}</span>
-                        <span class="text-[10px] text-slate-500 line-through" v-if="product.discountPercentage > 0">Rs. {{ product.price }}</span>
-                      </div>
-                    </div>
-
-                    <!-- Cart button -->
-                    <button 
-                      class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-500 hover:shadow-md hover:shadow-blue-500/30 transition active:scale-95 disabled:opacity-50"
-                      :disabled="product.stock <= 0"
-                      @click="addToCart(product)"
-                      title="Add to Cart"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+          <!-- Typing Indicator -->
+          <div v-if="loading" class="flex gap-3 justify-start">
+            <div class="msg-avatar ai-msg-avatar shrink-0">AI</div>
+            <div class="ai-bubble">
+              <div class="flex items-center gap-1.5">
+                <div class="typing-dot" style="animation-delay: 0ms;"></div>
+                <div class="typing-dot" style="animation-delay: 150ms;"></div>
+                <div class="typing-dot" style="animation-delay: 300ms;"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Typing Loading -->
-        <div v-if="loading" class="flex gap-4 max-w-[85%]">
-          <div class="w-9 h-9 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-sm font-bold">CB</div>
-          <div class="px-5 py-3.5 bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none flex items-center gap-1.5">
-            <div class="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-75"></div>
-            <div class="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-150"></div>
-            <div class="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-300"></div>
-          </div>
+        <!-- Suggestion Chips + Input -->
+        <div class="chat-input-wrapper">
+          <!-- Chips: only show when input is empty and not focused -->
+          <Transition name="chips">
+            <div v-if="!inputQuery && !isFocused && !loading" class="chips-row">
+              <button
+                v-for="chip in suggestionChips"
+                :key="chip"
+                type="button"
+                class="chip"
+                @click="useChip(chip)"
+              >
+                {{ chip }}
+              </button>
+            </div>
+          </Transition>
+
+          <form @submit.prevent="sendMessage" class="chat-input-bar">
+            <input
+              v-model="inputQuery"
+              type="text"
+              placeholder="Ask anything — budget, category, use case…"
+              class="chat-input"
+              :disabled="loading"
+              @focus="isFocused = true"
+              @blur="isFocused = false"
+              ref="chatInputRef"
+            />
+            <button type="submit" :disabled="loading || !inputQuery.trim()" class="chat-send">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+              </svg>
+            </button>
+          </form>
         </div>
       </div>
-
-      <!-- Input Bar -->
-      <form @submit.prevent="sendMessage" class="px-8 py-5 border-t border-slate-800 bg-slate-900/80 flex gap-4 items-center">
-        <input 
-          v-model="inputQuery"
-          type="text" 
-          placeholder="Ask me to recommend something... (e.g. 'I want a laptop under Rs. 150000')" 
-          class="flex-1 bg-slate-950 border border-slate-800 rounded-full px-6 py-3.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/20 transition-all duration-300"
-          :disabled="loading"
-        />
-        <button 
-          type="submit" 
-          :disabled="loading || !inputQuery.trim()" 
-          class="bg-blue-600 text-white rounded-full px-6 py-3.5 text-sm font-bold shadow-lg shadow-blue-900/30 hover:bg-blue-500 hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all flex items-center gap-2"
-        >
-          <span>Send</span>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-          </svg>
-        </button>
-      </form>
     </div>
   </div>
 </template>
@@ -121,90 +128,69 @@ const route = useRoute();
 const toast = useToast();
 const cartStore = useCartStore();
 const authStore = useAuthStore();
-
-const messages = ref([
-  {
-    sender: 'ai',
-    text: "Tell me what you're looking for, including your budget, preferences, or category, and I will find the closest matches from our store."
-  }
-]);
-
+const messages = ref([{ sender: 'ai', text: "Tell me what you're looking for — budget, category, or specific needs — and I'll find the closest matches from our catalog." }]);
 const inputQuery = ref('');
 const loading = ref(false);
+const isFocused = ref(false);
 const chatContainerRef = ref(null);
+const chatInputRef = ref(null);
+
+const suggestionChips = [
+  'Laptop under Rs. 100,000',
+  'Best smartphones this week',
+  'Home decor ideas',
+  'Sports gear under Rs. 5,000',
+  'Kitchen essentials',
+];
+
+const useChip = (chip) => {
+  inputQuery.value = chip;
+  isFocused.value = true;
+  nextTick(() => chatInputRef.value?.focus());
+};
 
 const scrollToBottom = async () => {
   await nextTick();
-  if (chatContainerRef.value) {
-    chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight;
-  }
+  if (chatContainerRef.value) chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight;
 };
-
-const getDiscountedPrice = (product) => {
-  const discount = Number(product.discountPercentage || 0);
-  if (discount <= 0) return Number(product.price);
-  return Number((product.price * (1 - discount / 100)).toFixed(2));
+const getDiscountedPrice = (p) => {
+  const d = Number(p.discountPercentage || 0);
+  return d <= 0 ? Number(p.price) : Number((p.price * (1 - d / 100)).toFixed(2));
 };
-
-const goToProduct = (product) => {
-  router.push(`/${product.category}/${product.id}`);
-};
-
+const goToProduct = (p) => router.push(`/${p.category}/${p.id}`);
 const addToCart = (product) => {
   if (!authStore.isAuthenticated) {
-    toast.info("Please sign in or sign up before adding items to your cart.", {
-      timeout: 2500,
-      hideProgressBar: true,
-    });
+    toast.info("Please sign in before adding items.", { timeout: 2500, hideProgressBar: true });
     router.push({ path: '/auth', query: { redirect: route.fullPath } });
     return;
   }
-  const price = getDiscountedPrice(product);
-  cartStore.addToCart(1, product.id, product.title, product.thumbnail, price);
+  cartStore.addToCart(1, product.id, product.title, product.thumbnail, getDiscountedPrice(product));
   cartStore.totalQuantity();
-  toast.success(`1 item added to cart`, {
-    toastClassName: "relative flex items-center gap-3 bg-white text-slate-800 font-medium rounded-xl shadow-xl border border-slate-100 p-4 ring-1 ring-black/5",
-    timeout: 2000,
-    hideProgressBar: true,
-    icon: false,
-  });
+  toast.success('Added to cart', { timeout: 1800, hideProgressBar: true, icon: false });
 };
-
 const sendMessage = async () => {
   if (!inputQuery.value.trim() || loading.value) return;
-
   const userText = inputQuery.value.trim();
   messages.value.push({ sender: 'user', text: userText });
   inputQuery.value = '';
   loading.value = true;
   await scrollToBottom();
-
   try {
-    const res = await fetch('http://localhost:5000/api/qa/recommend', {
+    const res = await fetch('http://localhost:5001/api/qa/recommend', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requirements: userText })
     });
-
-    if (!res.ok) {
-      throw new Error('Recommendation service failed to respond.');
-    }
-
+    if (!res.ok) throw new Error('Failed');
     const data = await res.json();
     messages.value.push({
       sender: 'ai',
-      text: data.answer || "I've checked our catalog but couldn't find matches fitting your exact requirement.",
+      text: data.answer || "I checked our catalog but couldn't find exact matches.",
       products: data.recommendedProducts || [],
       provider: data.provider
     });
-  } catch (err) {
-    console.error('Recommendation Error:', err);
-    messages.value.push({
-      sender: 'ai',
-      text: 'Sorry, I encountered an issue processing your request. Please check your backend connection.'
-    });
+  } catch {
+    messages.value.push({ sender: 'ai', text: 'Sorry, I encountered an issue. Please check your connection and try again.' });
   } finally {
     loading.value = false;
     await scrollToBottom();
@@ -213,18 +199,101 @@ const sendMessage = async () => {
 </script>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+.assistant-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: white; border: 1px solid var(--cream-200);
+  border-radius: 16px; box-shadow: var(--shadow-sm);
 }
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.ai-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
+.chat-shell {
+  background: white; border: 1px solid var(--cream-200);
+  border-radius: 20px; overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+.msg-animate { animation: msgIn 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 800;
+  letter-spacing: 0.04em; margin-top: 2px;
+}
+.ai-msg-avatar { background: var(--cream-100); color: var(--stone-600); border: 1px solid var(--cream-200); }
+.user-msg-avatar { background: var(--stone-900); color: var(--cream-50); }
+.user-bubble {
+  padding: 0.875rem 1.1rem; border-radius: 18px 18px 4px 18px;
+  background: var(--stone-900); color: var(--cream-50);
+  font-size: 0.875rem; max-width: 420px;
+}
+.ai-bubble {
+  padding: 0.875rem 1.1rem; border-radius: 18px 18px 18px 4px;
+  background: var(--cream-100); color: var(--stone-800);
+  border: 1px solid var(--cream-200); max-width: 420px;
+}
+.provider-tag { display: block; font-size: 0.65rem; color: var(--stone-400); margin-top: 6px; text-align: right; }
+/* Product recs */
+.rec-card {
+  background: white; border: 1px solid var(--cream-200); border-radius: 14px;
+  overflow: hidden; cursor: pointer; transition: box-shadow 0.25s, transform 0.25s;
+  display: flex; flex-direction: column;
+}
+.rec-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.rec-img-wrap {
+  height: 120px; background: var(--cream-100);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0.875rem; position: relative; overflow: hidden;
+}
+.rec-img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
+.rec-card:hover .rec-img { transform: scale(1.06); }
+.rec-discount {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 0.6rem; font-weight: 700; padding: 2px 7px; border-radius: 100px;
+  background: var(--amber-600); color: white;
+}
+.rec-body { padding: 0.875rem; flex: 1; display: flex; flex-direction: column; }
+.rec-category { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--amber-600); margin-bottom: 3px; }
+.rec-name { font-size: 0.8rem; font-weight: 600; color: var(--stone-800); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: auto; padding-bottom: 0.75rem; }
+.rec-foot { display: flex; align-items: center; justify-content: space-between; }
+.rec-price { font-size: 0.9rem; font-weight: 700; color: var(--stone-900); }
+.rec-original { font-size: 0.68rem; color: var(--stone-400); text-decoration: line-through; }
+.rec-add {
+  width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--cream-200);
+  background: transparent; color: var(--stone-500); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+}
+.rec-card:hover .rec-add:not(:disabled) { background: var(--stone-900); color: var(--cream-50); border-color: var(--stone-900); }
+.rec-add:disabled { opacity: 0.3; cursor: not-allowed; }
+/* Typing */
+.typing-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--stone-400); animation: typingBounce 1.2s infinite ease-in-out;
+}
+@keyframes typingBounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+/* Input */
+.chat-input-bar {
+  display: flex; gap: 10px; padding: 1rem 1.25rem;
+  border-top: 1px solid var(--cream-200); background: var(--cream-50);
+}
+.chat-input {
+  flex: 1; border-radius: 100px; padding: 0.75rem 1.25rem;
+  border: 1px solid var(--cream-200); background: white;
+  color: var(--stone-800); font-family: var(--font-body); font-size: 0.875rem;
+  outline: none; transition: border-color 0.2s;
+}
+.chat-input:focus { border-color: var(--stone-400); }
+.chat-input::placeholder { color: var(--stone-400); }
+.chat-send {
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--stone-900); color: var(--cream-50);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+.chat-send:hover:not(:disabled) { background: var(--stone-700); transform: scale(1.05); }
+.chat-send:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 </style>

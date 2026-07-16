@@ -2,7 +2,16 @@ const path = require('path');
 const { spawn } = require('child_process');
 const pool = require('../models/db');
 
-const pythonCommand = process.env.PYTHON_COMMAND || 'python';
+const fs = require('fs');
+
+const getPythonCommand = () => {
+    if (process.env.PYTHON_COMMAND) return process.env.PYTHON_COMMAND;
+    const condaPath = '/opt/anaconda3/envs/SPC/bin/python';
+    if (fs.existsSync(condaPath)) return condaPath;
+    return 'python3';
+};
+
+const pythonCommand = getPythonCommand();
 
 const runPythonRecommender = (payload) => new Promise((resolve, reject) => {
     const process = spawn(pythonCommand, ['-m', 'recommender.cli'], {

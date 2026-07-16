@@ -1,132 +1,129 @@
 <template>
-  <div class="flex flex-col items-center min-h-[calc(100vh-80px)] py-12 px-4 sm:px-6 lg:px-8 bg-slate-950">
-    <div v-if="product" class="w-full max-w-6xl bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-800 flex flex-col md:flex-row relative">
-      <button @click="goBack" class="absolute top-4 left-4 z-10 p-2 bg-slate-800/80 backdrop-blur-md text-slate-200 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-lg border border-slate-700">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-      </button>
-      <!-- Image Section -->
-      <div class="md:w-1/2 bg-slate-800/50 p-8 flex flex-col items-center justify-center border-r border-slate-800 relative group">
-        <div class="w-full h-[400px] flex items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-slate-700">
-          <img :src="product.thumbnail" :alt="product.title" class="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
-        </div>
-        <!-- Optional Thumbnails or Color Picker could go here -->
+  <div style="background: var(--cream-50); min-height: 100vh;">
+    <div v-if="product" class="max-w-7xl mx-auto px-6 lg:px-12 pt-32 pb-20">
+
+      <!-- Breadcrumb -->
+      <div class="flex items-center gap-2 mb-10 text-xs" style="color: var(--stone-400);">
+        <button @click="router.push('/')" class="hover-text transition-colors">Home</button>
+        <span>›</span>
+        <button @click="router.push(`/${product.category}`)" class="hover-text transition-colors capitalize">{{ product.category.replace(/-/g,' ') }}</button>
+        <span>›</span>
+        <span class="truncate max-w-[200px]" style="color: var(--stone-600);">{{ product.title }}</span>
       </div>
-      
-      <!-- Details Section -->
-      <div class="md:w-1/2 p-8 md:p-12 flex flex-col">
-        <div class="mb-auto">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-full uppercase tracking-wider">{{ product.category }}</span>
-            
-            <span v-if="product.stock > 10" class="text-emerald-400 bg-emerald-900/30 border-emerald-500/20 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
-               In Stock ({{ product.stock }})
-            </span>
-            <span v-else-if="product.stock > 0" class="text-amber-400 bg-amber-900/30 border-amber-500/20 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
-               Low Stock ({{ product.stock }})
-            </span>
-            <span v-else class="text-red-400 bg-red-900/30 border-red-500/20 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border">
-               Out of Stock
-            </span>
-          </div>
-          
-          <h2 class="text-4xl sm:text-5xl font-extrabold text-slate-100 mb-6 leading-tight tracking-tight">{{ product.title }}</h2>
-          
-           <p class="text-lg text-slate-400 leading-relaxed mb-8">{{ product.description }}</p>
 
-           <div v-if="product.specs" class="mb-8">
-             <p class="text-sm text-slate-500 font-medium uppercase tracking-wide mb-2">Specifications</p>
-             <p class="text-sm text-slate-300 leading-relaxed">{{ product.specs }}</p>
-           </div>
-
-           <div class="mb-8">
-             <p class="text-sm text-slate-500 font-medium uppercase tracking-wide mb-2">Warranty</p>
-             <p class="text-sm text-slate-300 leading-relaxed">{{ product.warrantyInformation || 'No warranty' }}</p>
-           </div>
-          
-          <div class="border-t border-b border-slate-800 py-6 mb-8 flex items-center justify-between">
-             <div>
-                <p class="text-sm text-slate-500 font-medium uppercase tracking-wide mb-1">Price</p>
-                <div class="flex items-center gap-3">
-                  <p class="text-4xl font-black text-blue-500">Rs. {{ getDiscountedPrice(product) }}</p>
-                  <span v-if="product.discountPercentage > 0" class="text-base text-slate-500 line-through">Rs. {{ product.price }}</span>
-                </div>
-             </div>
-             
-            <div class="flex items-center gap-4 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-              <button @click="quantity--" :disabled="quantity <= 1" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-50 transition-all font-bold text-lg">-</button>
-              <span class="w-12 text-center text-xl font-bold text-slate-200">{{ quantity }}</span>
-              <button @click="quantity++" :disabled="quantity >= product.stock" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-50 transition-all font-bold text-lg">+</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-auto space-y-4">
-          <button 
-            class="w-full bg-blue-600 text-white py-4 px-8 rounded-2xl font-bold text-xl shadow-lg shadow-blue-900/20 hover:bg-blue-500 hover:shadow-blue-500/30 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed" 
-            :disabled="product.stock <= 0"
-            @click="addToCart(product.title, product.thumbnail, getDiscountedPrice(product))"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            {{ product.stock <= 0 ? 'Out of Stock' : 'Add to Cart' }}
+      <!-- Main Card -->
+      <div class="product-detail-card">
+        <!-- Left: Image -->
+        <div class="detail-image-side">
+          <button @click="goBack" class="back-btn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Back
           </button>
-          
-          <p class="text-center text-sm text-slate-500 font-medium border-t border-slate-800 pt-4 flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+          <div class="detail-img-frame">
+            <img :src="product.thumbnail" :alt="product.title" class="detail-img" />
+          </div>
+          <p class="detail-shipping">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
             {{ product.shippingInformation }}
           </p>
         </div>
 
-        <div class="mt-10 p-6 bg-slate-900 border border-slate-800 rounded-3xl">
-          <h3 class="text-2xl font-semibold text-white mb-4">Ask about this product</h3>
-
-          <textarea
-            v-model="qaQuestion"
-            rows="4"
-            placeholder="Ask a question about this product..."
-            class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-slate-100 focus:outline-none focus:border-blue-500 transition-all resize-none"
-          ></textarea>
-
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
-            <button
-              @click="askQuestion"
-              :disabled="qaLoading || !qaQuestion.trim()"
-              class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white py-3 px-6 rounded-2xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ qaLoading ? 'Checking...' : 'Ask about product' }}
-            </button>
-            <span v-if="!qaLoading" class="text-sm text-slate-400">Powered by {{ qaProvider }}</span>
+        <!-- Right: Details -->
+        <div class="detail-info-side">
+          <!-- Badges -->
+          <div class="flex flex-wrap items-center gap-2 mb-5">
+            <span class="meta-pill">{{ product.category.replace(/-/g,' ') }}</span>
+            <span v-if="product.stock > 10" class="stock-pill in">In Stock ({{ product.stock }})</span>
+            <span v-else-if="product.stock > 0" class="stock-pill low">Low Stock ({{ product.stock }})</span>
+            <span v-else class="stock-pill out">Out of Stock</span>
           </div>
 
-          <div v-if="qaError" class="mt-4 text-sm text-red-400">{{ qaError }}</div>
+          <h2 class="detail-title">{{ product.title }}</h2>
+          <p class="detail-desc">{{ product.description }}</p>
 
-          <div v-if="qaAnswer" class="mt-6 bg-slate-950 border border-slate-800 rounded-2xl p-4">
-            <h4 class="text-lg font-semibold text-white mb-3">Answer</h4>
-            <p class="text-slate-300 leading-7 whitespace-pre-line">{{ qaAnswer }}</p>
+          <div v-if="product.specs" class="detail-spec">
+            <p class="spec-label">Specifications</p>
+            <p class="spec-val">{{ product.specs }}</p>
+          </div>
+          <div class="detail-spec">
+            <p class="spec-label">Warranty</p>
+            <p class="spec-val">{{ product.warrantyInformation || 'No warranty included' }}</p>
+          </div>
+
+          <!-- Price & Quantity -->
+          <div class="price-row">
+            <div>
+              <p class="price-label">Price</p>
+              <div class="flex items-center gap-3">
+                <p class="detail-price">Rs. {{ getDiscountedPrice(product).toLocaleString() }}</p>
+                <span v-if="product.discountPercentage > 0" class="original-price">Rs. {{ product.price }}</span>
+                <span v-if="product.discountPercentage > 0" class="discount-chip">-{{ Math.round(product.discountPercentage) }}%</span>
+              </div>
+            </div>
+            <div class="qty-control">
+              <button @click="quantity--" :disabled="quantity <= 1" class="qty-btn">−</button>
+              <span class="qty-val">{{ quantity }}</span>
+              <button @click="quantity++" :disabled="quantity >= product.stock" class="qty-btn">+</button>
+            </div>
+          </div>
+
+          <!-- Add to Cart -->
+          <button class="add-to-cart-btn" :disabled="product.stock <= 0"
+            @click="addToCart(product.title, product.thumbnail, getDiscountedPrice(product))">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            {{ product.stock <= 0 ? 'Out of Stock' : 'Add to Cart' }}
+          </button>
+
+          <!-- Q&A Section -->
+          <div class="qa-box">
+            <h3 class="qa-title">Ask about this product</h3>
+            <textarea v-model="qaQuestion" rows="3" placeholder="Ask anything about specs, compatibility, usage…" class="qa-textarea"></textarea>
+            <div class="flex items-center gap-3 mt-3">
+              <button @click="askQuestion" :disabled="qaLoading || !qaQuestion.trim()" class="qa-btn">
+                {{ qaLoading ? 'Checking…' : 'Ask AI' }}
+              </button>
+              <span v-if="!qaLoading && qaProvider" class="text-xs" style="color: var(--stone-400);">via {{ qaProvider }}</span>
+            </div>
+            <div v-if="qaError" class="mt-3 text-sm" style="color: #DC2626;">{{ qaError }}</div>
+            <div v-if="qaAnswer" class="qa-answer">
+              <p class="text-xs font-semibold mb-2" style="color: var(--stone-500);">Answer</p>
+              <p class="text-sm leading-relaxed whitespace-pre-line" style="color: var(--stone-700);">{{ qaAnswer }}</p>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Similar Products -->
+      <section v-if="similarProducts.length" class="mt-16">
+        <div class="mb-6 pb-4" style="border-bottom: 1px solid var(--cream-200);">
+          <p class="section-label mb-1">You may also like</p>
+          <h3 style="font-family: var(--font-display); font-size: 1.8rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.02em;">Similar Products</h3>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          <article v-for="rec in similarProducts" :key="rec.productId"
+            class="sim-card group" @click="router.push(`/${rec.category}/${rec.productId}`)">
+            <div class="sim-img-wrap">
+              <img :src="rec.thumbnail" :alt="rec.name" class="sim-img" />
+            </div>
+            <div class="sim-body">
+              <p class="sim-score">{{ Math.round(rec.similarityScore * 100) }}% match</p>
+              <h4 class="sim-name">{{ rec.name }}</h4>
+              <p class="sim-reason">{{ rec.reason }}</p>
+              <p class="sim-price">Rs. {{ Number(rec.price).toLocaleString() }}</p>
+            </div>
+          </article>
+        </div>
+      </section>
     </div>
 
-    <section v-if="similarProducts.length" class="w-full max-w-6xl mt-8">
-      <div class="mb-5">
-        <h3 class="text-2xl font-semibold text-white">Similar Products</h3>
-        <p class="text-sm text-slate-500 mt-1">Content-based recommendations using product attributes and price.</p>
+    <!-- Not Found -->
+    <div v-else class="min-h-[80vh] flex items-center justify-center">
+      <div class="text-center">
+        <p style="color: var(--stone-400);" class="text-sm mb-4">Product not found</p>
+        <button @click="router.push('/')" class="rounded-full px-6 py-3 text-sm font-semibold"
+          style="background: var(--stone-900); color: var(--cream-50);">Go Home</button>
       </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <article v-for="recommendation in similarProducts" :key="recommendation.productId" class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <button type="button" class="w-full h-40 bg-white p-5 flex items-center justify-center" @click="openRecommendation(recommendation)">
-            <img :src="recommendation.thumbnail" :alt="recommendation.name" class="max-h-full max-w-full object-contain" />
-          </button>
-          <div class="p-4">
-            <p class="text-[10px] uppercase tracking-wider text-blue-400 mb-1">{{ Math.round(recommendation.similarityScore * 100) }}% similar</p>
-            <h4 class="text-sm font-semibold text-slate-100 line-clamp-2 min-h-10">{{ recommendation.name }}</h4>
-            <p class="text-xs text-slate-500 mt-1">{{ recommendation.reason }}</p>
-            <p class="text-lg font-bold text-slate-100 mt-3">Rs. {{ recommendation.price }}</p>
-          </div>
-        </article>
-      </div>
-    </section>
+    </div>
   </div>
 </template>
 
@@ -138,123 +135,231 @@ import { useRoute, useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 
-// Store & Route
 const cartStore = useCartStore();
 const authStore = useAuthStore();
 const route = useRoute();
-const router = useRouter(); // Ensure useRouter is imported and assigned
-
-// Navigation
-const goBack = () => {
-  if (product.value && product.value.category) {
-    router.push(`/${product.value.category}`);
-  } else {
-    router.push('/');
-  }
-};
-
-// Reactive Variables
+const router = useRouter();
 const quantity = ref(1);
 const products = inject("products");
-
-
-// Computed Property: Find the product by ID
 const product = computed(() => {
-  const selectedId = Number(route.params.id);
-  return products.value?.find((p) => p.id === selectedId) || null;
+  const id = Number(route.params.id);
+  return products.value?.find(p => p.id === id) || null;
 });
-
-// Function to Add Product to Cart
+const goBack = () => router.push(product.value?.category ? `/${product.value.category}` : '/');
+const getDiscountedPrice = (p) => {
+  const d = Number(p.discountPercentage || 0);
+  return d <= 0 ? Number(p.price) : Number((p.price * (1 - d / 100)).toFixed(2));
+};
 const addToCart = (title, thumbnail, price) => {
   if (!authStore.isAuthenticated) {
-    toast.info("Please sign in or sign up before adding items to your cart.", {
-      timeout: 2500,
-      hideProgressBar: true,
-    });
+    toast.info("Please sign in before adding items to your cart.", { timeout: 2500, hideProgressBar: true });
     router.push({ path: '/auth', query: { redirect: route.fullPath } });
     return;
   }
   cartStore.addToCart(quantity.value, route.params.id, title, thumbnail, price);
   cartStore.totalQuantity();
-  showMessage();
+  toast.success(`${quantity.value} item added to cart`, { timeout: 2000, hideProgressBar: true, icon: false });
 };
-
-const getDiscountedPrice = (product) => {
-  const discount = Number(product.discountPercentage || 0);
-  if (discount <= 0) return Number(product.price);
-  return Number((product.price * (1 - discount / 100)).toFixed(2));
-};
-
 const qaQuestion = ref('');
 const qaAnswer = ref('');
-const qaProvider = ref('Product Catalog');
+const qaProvider = ref('');
 const qaLoading = ref(false);
 const qaError = ref(null);
 const similarProducts = ref([]);
-
 const fetchRecommendations = async (productId) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/products/${productId}/recommendations?topN=4`);
-    if (!response.ok) return;
-    similarProducts.value = await response.json();
-  } catch (error) {
-    console.error('Recommendation error:', error);
-    similarProducts.value = [];
-  }
+    const res = await fetch(`http://localhost:5001/api/products/${productId}/recommendations?topN=4`);
+    if (!res.ok) return;
+    similarProducts.value = await res.json();
+  } catch { similarProducts.value = []; }
 };
-
-const openRecommendation = (recommendation) => {
-  router.push(`/${recommendation.category}/${recommendation.productId}`);
-};
-
-watch(product, (currentProduct) => {
-  if (currentProduct) fetchRecommendations(currentProduct.id);
-}, { immediate: true });
-
 const askQuestion = async () => {
   if (!qaQuestion.value.trim() || !product.value) return;
-
-  qaLoading.value = true;
-  qaError.value = null;
-  qaAnswer.value = '';
-  qaProvider.value = 'Product Catalog';
-
+  qaLoading.value = true; qaError.value = null; qaAnswer.value = ''; qaProvider.value = '';
   try {
-    const response = await fetch('http://localhost:5000/api/qa', {
+    const res = await fetch('http://localhost:5001/api/qa', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        productId: product.value.id,
-        question: qaQuestion.value.trim()
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: product.value.id, question: qaQuestion.value.trim() })
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      qaError.value = data.message || 'Unable to get an answer';
-      return;
-    }
-
+    const data = await res.json();
+    if (!res.ok) { qaError.value = data.message || 'Unable to get an answer'; return; }
     qaAnswer.value = data.answer || 'No answer returned.';
-    qaProvider.value = data.provider || 'Product Catalog';
-  } catch (err) {
-    console.error('QA error:', err);
-    qaError.value = 'Product question failed. Please try again.';
-  } finally {
-    qaLoading.value = false;
-  }
+    qaProvider.value = data.provider || '';
+  } catch { qaError.value = 'Failed to get answer. Please try again.'; }
+  finally { qaLoading.value = false; }
 };
-
-const showMessage = () => {
-  toast.success(`${quantity.value} item added to cart`, {
-    toastClassName: "relative flex items-center gap-3 bg-white text-slate-800 font-medium rounded-xl shadow-xl border border-slate-100 p-4 ring-1 ring-black/5", 
-    timeout: 2000, 
-    hideProgressBar: true,
-  });
-};
-
+watch(product, (p) => { if (p) fetchRecommendations(p.id); }, { immediate: true });
 </script>
 
-
+<style scoped>
+.hover-text:hover { color: var(--stone-700) !important; }
+.product-detail-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  background: white;
+  border: 1px solid var(--cream-200);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+@media (max-width: 900px) {
+  .product-detail-card { grid-template-columns: 1fr; }
+}
+.detail-image-side {
+  background: var(--cream-100);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-right: 1px solid var(--cream-200);
+  position: relative;
+}
+@media (max-width: 900px) { .detail-image-side { border-right: none; border-bottom: 1px solid var(--cream-200); } }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  background: rgba(250,249,246,0.9); border: 1px solid var(--cream-200);
+  padding: 6px 14px; border-radius: 100px; color: var(--stone-600);
+  transition: all 0.2s; backdrop-filter: blur(8px);
+  align-self: flex-start;
+}
+.back-btn:hover { background: white; color: var(--stone-900); }
+.detail-img-frame {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 2rem; min-height: 320px;
+}
+.detail-img {
+  max-width: 100%; max-height: 380px;
+  object-fit: contain; transition: transform 0.5s ease;
+}
+.detail-img-frame:hover .detail-img { transform: scale(1.05); }
+.detail-shipping {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; color: var(--stone-500); font-weight: 500;
+  justify-content: center;
+}
+.detail-info-side { padding: 2.5rem; display: flex; flex-direction: column; gap: 0; }
+.meta-pill {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; padding: 4px 12px; border-radius: 100px;
+  background: var(--cream-100); color: var(--stone-600);
+  border: 1px solid var(--cream-200);
+}
+.stock-pill {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; padding: 4px 12px; border-radius: 100px; border: 1px solid;
+}
+.stock-pill.in { background: rgba(34,197,94,0.08); color: #16A34A; border-color: rgba(34,197,94,0.2); }
+.stock-pill.low { background: rgba(245,158,11,0.08); color: var(--amber-600); border-color: rgba(245,158,11,0.2); }
+.stock-pill.out { background: rgba(220,38,38,0.06); color: #DC2626; border-color: rgba(220,38,38,0.15); }
+.detail-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  color: var(--stone-900); font-weight: 400;
+  line-height: 1.15; letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+.detail-desc {
+  font-size: 0.95rem; line-height: 1.7;
+  color: var(--stone-500); margin: 0 0 1.5rem;
+}
+.detail-spec { margin-bottom: 1rem; }
+.spec-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--stone-400); margin-bottom: 4px;
+}
+.spec-val { font-size: 0.875rem; color: var(--stone-700); line-height: 1.6; }
+.price-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.5rem 0; margin: 1rem 0;
+  border-top: 1px solid var(--cream-200); border-bottom: 1px solid var(--cream-200);
+}
+.price-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--stone-400); margin-bottom: 6px;
+}
+.detail-price {
+  font-size: 2rem; font-weight: 700; color: var(--stone-900);
+  letter-spacing: -0.03em; font-family: var(--font-display);
+}
+.original-price { font-size: 0.9rem; color: var(--stone-400); text-decoration: line-through; }
+.discount-chip {
+  font-size: 0.7rem; font-weight: 700; padding: 3px 9px;
+  border-radius: 100px; background: var(--amber-600); color: white;
+}
+.qty-control {
+  display: flex; align-items: center;
+  border: 1px solid var(--cream-200); border-radius: 12px; overflow: hidden;
+}
+.qty-btn {
+  width: 40px; height: 40px; background: transparent; border: none;
+  font-size: 1.1rem; font-weight: 500; cursor: pointer;
+  color: var(--stone-500); transition: all 0.2s;
+}
+.qty-btn:hover:not(:disabled) { background: var(--cream-100); color: var(--stone-900); }
+.qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.qty-val { width: 44px; text-align: center; font-weight: 700; font-size: 1rem; color: var(--stone-900); }
+.add-to-cart-btn {
+  width: 100%; padding: 1rem; border-radius: 14px; border: none;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 0.95rem; font-weight: 700; cursor: pointer;
+  background: var(--stone-900); color: var(--cream-50);
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(28,25,23,0.18);
+  margin-bottom: 1.5rem;
+}
+.add-to-cart-btn:hover:not(:disabled) {
+  background: var(--stone-700); transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(28,25,23,0.22);
+}
+.add-to-cart-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.qa-box {
+  background: var(--cream-100); border-radius: 16px; padding: 1.5rem;
+  border: 1px solid var(--cream-200);
+}
+.qa-title {
+  font-size: 1rem; font-weight: 600; color: var(--stone-800);
+  margin-bottom: 0.875rem; font-family: var(--font-body);
+}
+.qa-textarea {
+  width: 100%; border-radius: 10px; padding: 0.75rem 1rem;
+  border: 1px solid var(--cream-200); background: white;
+  color: var(--stone-800); font-family: var(--font-body);
+  font-size: 0.875rem; line-height: 1.6; resize: none;
+  outline: none; transition: border-color 0.2s;
+}
+.qa-textarea:focus { border-color: var(--stone-400); }
+.qa-textarea::placeholder { color: var(--stone-400); }
+.qa-btn {
+  padding: 8px 20px; border-radius: 100px; border: none; cursor: pointer;
+  font-size: 0.8rem; font-weight: 700;
+  background: var(--stone-900); color: var(--cream-50);
+  transition: background 0.2s;
+}
+.qa-btn:hover:not(:disabled) { background: var(--stone-700); }
+.qa-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.qa-answer {
+  margin-top: 1rem; padding: 1rem; border-radius: 10px;
+  background: white; border: 1px solid var(--cream-200);
+}
+/* Similar products */
+.sim-card {
+  cursor: pointer; border-radius: 16px; overflow: hidden; background: white;
+  border: 1px solid var(--cream-200); transition: box-shadow 0.3s, transform 0.3s;
+  display: flex; flex-direction: column;
+}
+.sim-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.sim-img-wrap {
+  height: 160px; background: var(--cream-100);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.sim-img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
+.sim-card:hover .sim-img { transform: scale(1.06); }
+.sim-body { padding: 1rem; flex: 1; }
+.sim-score { font-size: 0.65rem; font-weight: 700; color: var(--amber-600); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.sim-name { font-size: 0.85rem; font-weight: 600; color: var(--stone-800); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+.sim-reason { font-size: 0.72rem; color: var(--stone-400); line-height: 1.5; margin-bottom: 8px; }
+.sim-price { font-size: 1rem; font-weight: 700; color: var(--stone-900); }
+</style>

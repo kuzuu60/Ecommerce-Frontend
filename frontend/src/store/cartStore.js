@@ -3,14 +3,20 @@ import { ref } from "vue";
 
 export const useCartStore = defineStore("cart", () => {
   // Reactive State
-  const item_details = ref([]); // Stores cart items {id, quantity, title, image, price, checked, shipping_fee}
-  const totalItem = ref(0); // Total quantity of all items in the cart
-  const shippingCost = ref(0); // Total shipping cost
-  const subTotal = ref(0); // Subtotal of selected items
-  const totalCost = ref(0); // Final total including shipping
-  const total_buying_item = ref(0); // Total count of checked (selected) items
+  const item_details = ref(JSON.parse(localStorage.getItem('luxe_cart_items')) || []); 
+  const totalItem = ref(0); 
+  const shippingCost = ref(0); 
+  const subTotal = ref(0); 
+  const totalCost = ref(0); 
+  const total_buying_item = ref(0); 
   const discountAmount = ref(0);
-  const promoButton=ref(false); // State to track if promo button is clicked
+  const promoButton=ref(false); 
+  const isCartOpen = ref(false); // State to control cart sidebar visibility
+
+  // Watch for changes and save to local storage
+  const saveCart = () => {
+    localStorage.setItem('luxe_cart_items', JSON.stringify(item_details.value));
+  };
 
   // Function: Add item to cart
   const addToCart = (quantity, id, title, image, price) => {
@@ -19,20 +25,27 @@ export const useCartStore = defineStore("cart", () => {
     );
 
     if (itemIndex !== -1) {
-      // If item already exists, increase quantity
+      // If item already exists, increase quantity and ensure it's checked
       item_details.value[itemIndex].quantity += quantity;
+      item_details.value[itemIndex].checked = true;
     } else {
-      // Add new item to the cart
-      item_details.value.push({
+      // Add new item to the cart, automatically checked
+      item_details.value.unshift({
         id: Number(id),
         quantity,
         title,
         image,
-        checked: false, // Default unchecked
+        checked: true, // Auto-tick newly added item
         price,
         shipping_fee: 100, // Fixed shipping fee per item
       });
     }
+    
+    // Auto-open cart sidebar and calculate costs
+    isCartOpen.value = true;
+    saveCart();
+    costCalculation();
+    totalQuantity();
   };
 
   // Function: Calculate costs (subtotal, shipping, total)
@@ -70,6 +83,7 @@ export const useCartStore = defineStore("cart", () => {
   const updateQuantity = (id, quantity) => {
     const itemIndex = item_details.value.findIndex((item) => item.id === id);
     item_details.value[itemIndex].quantity = quantity;
+    saveCart();
     costCalculation();
   };
 
@@ -78,6 +92,7 @@ export const useCartStore = defineStore("cart", () => {
     const itemIndex = item_details.value.findIndex((item) => item.id === id);
     item_details.value[itemIndex].checked =
       !item_details.value[itemIndex].checked;
+    saveCart();
     costCalculation();
     promoButton.value = false; // Reset promo button when checked status changes
   };
@@ -86,6 +101,7 @@ export const useCartStore = defineStore("cart", () => {
   const removeItem = (id) => {
     const itemIndex = item_details.value.findIndex((item) => item.id === id);
     item_details.value.splice(itemIndex, 1);
+    saveCart();
     costCalculation();
   };
 
@@ -125,6 +141,7 @@ export const useCartStore = defineStore("cart", () => {
     total_buying_item,
     discountAmount,
     promoButton,
+    isCartOpen,
     addToCart,
     updateQuantity,
     removeItem,

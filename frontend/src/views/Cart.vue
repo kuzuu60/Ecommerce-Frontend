@@ -1,242 +1,213 @@
 <template>
-  <div class="flex gap-8 p-8 min-h-[calc(100vh-80px)] bg-slate-950">
-    <div v-if="cartProducts.length > 0" class="flex-[3] flex flex-col gap-4 overflow-y-auto pr-2">
-      <div v-for="item in cartProducts" :key="item.id">
-        <div class="bg-slate-900 rounded-xl shadow-sm border border-slate-800 p-4 flex items-center gap-6 hover:bg-slate-800 transition-colors">
-          <div class="flex items-center gap-6 flex-1">
-             <input type="checkbox" v-model="item.checked" @click="cartStore.updateChecked(item.id)" class="w-5 h-5 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-             <div class="w-28 h-28 bg-white rounded-lg p-2 border border-slate-700 flex items-center justify-center cursor-pointer" @click="cartStore.updateChecked(item.id)">
-               <img :src="item.image" :alt="item.title" class="max-w-full max-h-full object-contain" />
-             </div>
-             <h3 class="text-lg font-medium text-slate-100 line-clamp-2 w-64">{{ item.title }}</h3>
-          </div>
-          
-          <div class="flex items-center justify-between w-48">
-            <p class="text-xl font-bold text-blue-500">Rs. {{ item.price }}</p>
-            <button @click="deleteItem(item)" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </button>
-          </div>
-          
-          <div class="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-lg p-1">
-            <button @click="updateQuan(item, item.quantity, 'sub')" :disabled="item.quantity === 1"
-              class="w-8 h-8 flex items-center justify-center bg-slate-800 border border-slate-700 rounded shadow-sm text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold">-</button>
-            <p class="w-24 text-center font-medium text-slate-300">Qty: {{ item.quantity }}</p>
-            <button @click="updateQuan(item, item.quantity, 'add')" class="w-8 h-8 flex items-center justify-center bg-slate-800 border border-slate-700 rounded shadow-sm text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-all font-bold">+</button>
+  <div style="background: var(--cream-50); min-height: 100vh; padding-top: 7rem;">
+    <div class="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
+      <div class="mb-8">
+        <p class="section-label mb-2">Your order</p>
+        <h1 style="font-family: var(--font-display); font-size: clamp(2rem,4vw,2.8rem); color: var(--stone-900); font-weight:400; letter-spacing:-0.02em;">Shopping Cart</h1>
+      </div>
+
+      <div v-if="cartProducts.length > 0" class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <!-- Cart Items -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+          <div v-for="item in cartProducts" :key="item.id" class="cart-item">
+            <div class="flex items-center gap-4">
+              <input type="checkbox" v-model="item.checked"
+                @click="cartStore.updateChecked(item.id)"
+                class="w-4 h-4 cursor-pointer rounded" />
+              <div class="cart-img-wrap">
+                <img :src="item.image" :alt="item.title" class="cart-img" />
+              </div>
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+              <div>
+                <h3 class="cart-name">{{ item.title }}</h3>
+                <p class="cart-price">Rs. {{ Number(item.price).toLocaleString() }}</p>
+              </div>
+              <div class="flex items-center justify-between mt-3">
+                <div class="qty-row">
+                  <button @click="updateQuan(item, item.quantity, 'sub')" :disabled="item.quantity === 1" class="qty-btn">−</button>
+                  <span class="qty-num">{{ item.quantity }}</span>
+                  <button @click="updateQuan(item, item.quantity, 'add')" class="qty-btn">+</button>
+                </div>
+                <button @click="deleteItem(item)" class="del-btn" title="Remove">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-    
-    <div class="flex-1 flex flex-col gap-6">
-      <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 sticky top-24">
-         <OrderSummary />
-         
-         <div class="mt-8 bg-slate-800/50 p-6 rounded-xl shadow-sm border border-slate-700">
-            <h2 class="text-lg font-bold text-slate-100 mb-1">Apply a Promotion Code</h2>
-            <p class="text-sm text-slate-400 mb-4">Remove any spaces or dashes before hitting apply</p>
-            <div class="flex gap-2">
-              <input type="text" v-model="discountPercentage" placeholder="Enter your code" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-500 text-slate-200" />
-              <button @click="cartStore.promoDiscountCalculation(discountPercentage)" :disabled="cartStore.promoButton" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed transition-colors">Apply</button>
+
+        <!-- Order Summary Sidebar -->
+        <div class="order-summary-card sticky top-24">
+          <h2 class="order-summary-title">Order Summary</h2>
+          <div class="summary-lines">
+            <div class="summary-line">
+              <span>Subtotal ({{ cartStore.total_buying_item }})</span>
+              <span>Rs. {{ cartStore.subTotal }}</span>
             </div>
-         </div>
+            <div class="summary-line">
+              <span>Shipping</span>
+              <span>Rs. {{ cartStore.shippingCost }}</span>
+            </div>
+            <div class="summary-line">
+              <span>Discount</span>
+              <span style="color: #16A34A;">− Rs. {{ cartStore.discountAmount }}</span>
+            </div>
+          </div>
+          <div class="summary-total">
+            <span>Total</span>
+            <span>Rs. {{ cartStore.totalCost }}</span>
+          </div>
+
+          <!-- Promo -->
+          <div class="promo-box">
+            <label class="promo-label">Promo Code</label>
+            <div class="flex gap-2 mt-2">
+              <input type="text" v-model="discountPercentage" placeholder="Enter code"
+                class="promo-input flex-1" />
+              <button @click="cartStore.promoDiscountCalculation(discountPercentage)"
+                :disabled="cartStore.promoButton" class="promo-btn">Apply</button>
+            </div>
+          </div>
+
+          <button class="checkout-btn" @click="paymentPage">
+            Proceed to Checkout ({{ cartStore.total_buying_item }})
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty Cart -->
+      <div v-else class="empty-cart">
+        <div class="empty-icon">
+          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        </div>
+        <h2 style="font-family: var(--font-display); font-size: 2rem; color: var(--stone-800); font-weight: 400;">Your cart is empty</h2>
+        <p style="color: var(--stone-500);">Looks like you haven't added anything yet.</p>
+        <button @click="router.push('/')" class="rounded-full px-6 py-3 text-sm font-semibold transition-all"
+          style="background: var(--stone-900); color: var(--cream-50);">Start Shopping</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import OrderSummary from '@/components/OrderSummary.vue';
 import { ref } from 'vue';
 import { useCartStore } from '@/store/cartStore';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 
 const cartStore = useCartStore();
-const cartProducts = ref(cartStore.item_details)
-const discountPercentage= ref(``)
+const authStore = useAuthStore();
+const router = useRouter();
+const toast = useToast();
+const cartProducts = ref(cartStore.item_details);
+const discountPercentage = ref('');
 
-const deleteItem = (item) => {
-  cartStore.removeItem(item.id)
-  cartStore.totalQuantity();
-}
-
+const deleteItem = (item) => { cartStore.removeItem(item.id); cartStore.totalQuantity(); };
 const updateQuan = (item, quantity, action) => {
-  cartStore.updateQuantity(item.id, action === "add" ? quantity + 1 : quantity - 1)
+  cartStore.updateQuantity(item.id, action === 'add' ? quantity + 1 : quantity - 1);
   cartStore.totalQuantity();
-}
-
+};
+const paymentPage = () => {
+  if (cartStore.total_buying_item <= 0) return;
+  if (!authStore.isAuthenticated) {
+    toast.info('Please sign in before purchasing.', { timeout: 2000, hideProgressBar: true });
+    router.push({ path: '/auth', query: { redirect: '/payment' } });
+    return;
+  }
+  router.push('/payment');
+};
 </script>
 
-<style scoped lang="scss">
-.overall-page {
-  display: flex;
-  padding: 20px;
-  gap: 20px;
-  height: 92dvh;
-
-  .cart-container {
-    display: flex;
-    flex: 11;
-    flex-direction: column;
-    gap: 10px;
-    overflow: scroll hidden;
-    .items {
-      box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-
-      .check-img-title {
-        padding: 10px 0;
-        display: flex;
-        width: 500px;
-        align-items: center;
-        justify-content: space-around;
-
-        h3 {
-          font-size: 1.7rem;
-          font-weight: 500;
-          width: 300px;
-        }
-
-        img {
-          background-color: oklch(97% 0 0);
-          border-radius: 5px;
-          width: 120px;
-          height: 110px;
-          cursor: pointer;
-        }
-
-        input[type="checkbox"] {
-          transform: scale(1.2);
-          accent-color: red;
-          cursor: pointer;
-        }
-      }
-
-      .price-del {
-        width: 200px;
-        justify-content: space-between;
-        display: flex;
-        align-items: center;
-
-        p {
-          font-size: 1.7rem;
-          color: red;
-          color: orange;
-        }
-
-        img {
-          width: 25px;
-          height: 25px;
-          cursor: pointer;
-          align-self: center;
-          filter: hue-rotate(110deg);
-        }
-      }
-
-      .quantity {
-        font-size: 1.6rem;
-        display: flex;
-        padding: 0 15px;
-
-        p {
-          font-size: 1.7rem;
-          width: 200px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        button {
-          width: 30px;
-          height: 30px;
-          background-color: #f0f0f0;
-          border: none;
-          cursor: pointer;
-
-          &:hover {
-            background-color: #e1e0e0;
-          }
-        }
-
-        .decrease-btn:disabled {
-          cursor: not-allowed;
-        }
-      }
-    }
-  }
-
-  .summary-container {
-    flex-grow: 1;
-    height: 100%;
-    background-color: #FAFAFA;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-
-    .content-below {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      background-color: white;
-      border-radius: 4px;
-      width: 400px;
-      padding: 20px;
-      font-size: 1.6rem;
-      margin-top: 20px;
-
-      h2 {
-        font-size: 1.8rem;
-        font-weight: 500;
-        margin-bottom: 5px;
-      }
-
-      p {
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 12px;
-      }
-
-      .but-input {
-        display: flex;
-        gap: 10px;
-
-        input {
-          border: solid 1px lightgray;
-          padding: 4px 6px;
-          border-radius: 4px;
-          font-size: 1.3rem;
-
-          &:hover {
-            border: solid 1px #757575;
-          }
-
-          &:focus {
-            border: solid 1px #232F3E;
-          }
-
-          &::placeholder {
-            font-size: 1.2rem;
-            color: gray;
-          }
-        }
-
-        button {
-          color: white;
-          border: none;
-          font-size: 1.3rem;
-          font-weight: bold;
-          background: #232F3E;
-          padding: 10px;
-          border-radius: 4px;
-          cursor: pointer;
-
-          &:disabled{
-            cursor: not-allowed;
-            background: #324256;
-          }
-        }
-      }
-    }
-  }
+<style scoped>
+.cart-item {
+  display: flex; align-items: center; gap: 1rem; padding: 1.25rem;
+  background: white; border: 1px solid var(--cream-200);
+  border-radius: 16px; transition: box-shadow 0.2s;
+}
+.cart-item:hover { box-shadow: var(--shadow-sm); }
+.cart-img-wrap {
+  width: 80px; height: 80px; border-radius: 12px; overflow: hidden;
+  background: var(--cream-100); border: 1px solid var(--cream-200);
+  display: flex; align-items: center; justify-content: center; padding: 8px; flex-shrink: 0;
+}
+.cart-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.cart-name {
+  font-size: 0.9rem; font-weight: 600; color: var(--stone-800);
+  line-height: 1.4; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px;
+}
+.cart-price { font-size: 1.05rem; font-weight: 700; color: var(--stone-900); letter-spacing: -0.02em; }
+.qty-row { display: flex; align-items: center; border: 1px solid var(--cream-200); border-radius: 10px; overflow: hidden; }
+.qty-btn {
+  width: 34px; height: 34px; background: transparent; border: none;
+  color: var(--stone-500); font-size: 1rem; cursor: pointer; transition: background 0.15s;
+}
+.qty-btn:hover:not(:disabled) { background: var(--cream-100); }
+.qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.qty-num { width: 38px; text-align: center; font-size: 0.9rem; font-weight: 700; color: var(--stone-800); }
+.del-btn {
+  padding: 8px; border-radius: 8px; border: none; background: transparent;
+  color: var(--stone-400); cursor: pointer; transition: all 0.2s;
+}
+.del-btn:hover { color: #DC2626; background: rgba(220,38,38,0.06); }
+.order-summary-card {
+  background: white; border: 1px solid var(--cream-200);
+  border-radius: 20px; padding: 1.75rem;
+  box-shadow: var(--shadow-md);
+}
+.order-summary-title {
+  font-family: var(--font-display); font-size: 1.4rem;
+  color: var(--stone-900); font-weight: 400; letter-spacing: -0.01em;
+  margin-bottom: 1.25rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--cream-200);
+}
+.summary-lines { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
+.summary-line {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.875rem; color: var(--stone-500); font-weight: 500;
+}
+.summary-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 0; border-top: 1px solid var(--cream-200); margin-bottom: 1.25rem;
+  font-size: 1.15rem; font-weight: 700; color: var(--stone-900);
+}
+.promo-box {
+  background: var(--cream-100); border-radius: 12px; padding: 1rem;
+  border: 1px solid var(--cream-200); margin-bottom: 1.25rem;
+}
+.promo-label { font-size: 0.75rem; font-weight: 700; color: var(--stone-500); text-transform: uppercase; letter-spacing: 0.1em; }
+.promo-input {
+  border: 1px solid var(--cream-200); border-radius: 8px; padding: 0.6rem 0.875rem;
+  font-size: 0.875rem; color: var(--stone-800); background: white; outline: none;
+  transition: border-color 0.2s; font-family: var(--font-body);
+}
+.promo-input:focus { border-color: var(--stone-400); }
+.promo-btn {
+  padding: 0.6rem 1rem; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 0.8rem; font-weight: 700; transition: background 0.2s;
+  background: var(--stone-900); color: var(--cream-50);
+}
+.promo-btn:hover:not(:disabled) { background: var(--stone-700); }
+.promo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.checkout-btn {
+  width: 100%; padding: 1rem; border-radius: 14px; border: none;
+  font-size: 0.9rem; font-weight: 700; cursor: pointer;
+  background: var(--stone-900); color: var(--cream-50);
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(28,25,23,0.18);
+}
+.checkout-btn:hover { background: var(--stone-700); transform: translateY(-1px); }
+.empty-cart {
+  min-height: 60vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1.25rem;
+  text-align: center;
+}
+.empty-icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--cream-100); border: 1px solid var(--cream-200);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--stone-400);
 }
 </style>
