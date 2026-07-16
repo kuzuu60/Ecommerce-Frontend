@@ -4,13 +4,17 @@
     <section class="hero-section" ref="heroSection">
       <div class="hero-split">
         <!-- Left: Typography -->
-        <div class="hero-text">
-          <div class="overflow-hidden">
-            <p class="overflow-hidden section-label" ref="tagline" style="transform: translateY(110%); opacity: 0;">Curated essentials · modern living</p>
+        <div class="hero-text relative z-10">
+          <!-- Ambient glowing orb behind text -->
+          <div class="absolute -top-20 -left-20 w-72 h-72 rounded-full blur-[80px] pointer-events-none z-[-1]" style="background: radial-gradient(circle, rgba(251,191,36,0.1), transparent 70%);"></div>
+          
+          <div class="overflow-hidden mb-6 flex items-center gap-3">
+            <span class="w-8 h-[1px]" style="background: var(--amber-600); transform: scaleX(0); transform-origin: left;" ref="heroLine"></span>
+            <p class="section-label m-0" ref="tagline" style="transform: translateY(110%); opacity: 0; color: var(--amber-600); letter-spacing: 0.2em;">Curated Essentials</p>
           </div>
-          <div class="overflow-hidden mt-5">
+          <div class="overflow-hidden">
             <h1 class="hero-h1" ref="heroH1" style="transform: translateY(110%); opacity: 0;">
-              Everything<br /><em>you love,</em><br />one place.
+              Everything<br /><em class="gradient-text">you love,</em><br />one place.
             </h1>
           </div>
           <div class="overflow-hidden mt-6">
@@ -19,8 +23,13 @@
             </p>
           </div>
           <div ref="heroCTAs" style="opacity: 0; transform: translateY(16px);" class="hero-ctas mt-10">
-            <button class="btn-primary" @click="router.push('/deals')">Shop now</button>
-            <button class="btn-ghost" @click="router.push('/contact')">Get in touch</button>
+            <button class="btn-primary group" @click="router.push('/deals')">
+              Shop now
+              <svg class="w-4 h-4 inline-block ml-1 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            </button>
+            <button class="btn-ghost group" @click="router.push('/contact')">
+              Get in touch
+            </button>
           </div>
           <div ref="heroMeta" style="opacity: 0;" class="hero-meta mt-8">
             <span>New here?</span>
@@ -103,6 +112,7 @@ const products = inject("products", ref([]));
 // Hero refs
 const heroSection = ref(null);
 const tagline = ref(null);
+const heroLine = ref(null);
 const heroH1 = ref(null);
 const heroBody = ref(null);
 const heroCTAs = ref(null);
@@ -135,7 +145,10 @@ const formatCategory = (slug) =>
 onMounted(() => {
   const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
 
-  tl.to([tagline.value, heroH1.value, heroBody.value], {
+  tl.to(heroLine.value, {
+    scaleX: 1, opacity: 1, duration: 1, ease: 'power3.out'
+  }, 0)
+  .to([tagline.value, heroH1.value, heroBody.value], {
     y: '0%', opacity: 1, duration: 1.1, stagger: 0.12,
   }, 0.1)
   .to([heroCTAs.value, heroMeta.value], {
@@ -196,15 +209,20 @@ onMounted(() => {
 
 .hero-h1 {
   font-family: var(--font-display);
-  font-size: clamp(3.5rem, 6vw, 5.5rem);
+  font-size: clamp(3.5rem, 6vw, 5.8rem);
   font-weight: 400;
   line-height: 1.05;
   color: var(--stone-900);
   letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
 
-  em {
+  em.gradient-text {
     font-style: italic;
-    color: var(--stone-500);
+    background: linear-gradient(135deg, var(--amber-600) 0%, #b45309 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    padding-right: 0.2em; /* prevent clipping italic tails */
   }
 }
 
