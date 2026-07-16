@@ -1,15 +1,8 @@
 <template>
   <div class="min-h-screen pt-[120px] pb-20 px-6 max-w-7xl mx-auto">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
-        <h1 class="text-4xl font-bold text-white tracking-tight font-display">Admin Dashboard</h1>
-        <div class="flex items-center gap-3">
-          <router-link to="/admin/orders" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-              View Orders
-          </router-link>
-          <button @click="handleLogout" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition-all">
-            Logout
-          </button>
-        </div>
+    <div class="mb-10">
+      <h1 class="text-4xl font-bold tracking-tight text-white font-display">Admin Dashboard</h1>
+      <p class="mt-2 text-slate-400">Manage your storefront, customers, and orders.</p>
     </div>
 
     <div class="grid lg:grid-cols-2 gap-12">
@@ -80,6 +73,21 @@
             <textarea v-model="newProduct.description" rows="3"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors resize-none"
               placeholder="Product details..."></textarea>
+          </div>
+
+          <div class="space-y-3">
+            <label class="text-sm font-medium text-slate-400">Product Image</label>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              @change="handleImageUpload"
+              class="block w-full cursor-pointer rounded-xl border border-slate-800 bg-slate-950 text-sm text-slate-400 file:mr-4 file:border-0 file:bg-blue-600 file:px-4 file:py-3 file:font-semibold file:text-white hover:file:bg-blue-500"
+            />
+            <p class="text-xs text-slate-500">Upload a JPG, PNG, WEBP, or GIF image.</p>
+            <div v-if="imagePreview || newProduct.image" class="flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-950 p-3">
+              <img :src="imagePreview || newProduct.image" alt="Product preview" class="h-20 w-20 rounded-lg bg-white object-contain p-1" />
+              <p class="truncate text-sm text-slate-300">{{ imageFile?.name || 'Current product image' }}</p>
+            </div>
           </div>
 
             <div class="flex gap-4">
@@ -165,19 +173,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, inject } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAdminStore } from '@/store/adminStore';
+import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import ActionStatusModal from '../components/ActionStatusModal.vue';
 
 const toast = useToast();
-const router = useRouter();
-const adminStore = useAdminStore();
-const products = inject('products');
-const fetchProducts = inject('fetchProducts');
+const products = ref([]);
 const loading = ref(false);
+
+const fetchProducts = async () => {
+  try {
+    const response = await fetch('http://localhost:5000/api/products');
+    if (!response.ok) throw new Error('Failed to fetch products');
+    const result = await response.json();
+    products.value = result.products.sort((a, b) => b.id - a.id);
+  } catch (error) {
+    console.error(error);
+    showStatus('error', 'Loading Failed', 'There was an error loading the product inventory.');
+  }
+};
 
 const newProduct = ref({
   title: '',
@@ -188,8 +203,6 @@ const newProduct = ref({
   stock: '',
   discountPercentage: 0
 });
-
-// fetchProducts is now injected from Layout.vue
 
 // Modal States
 const showDeleteConfirm = ref(false);
@@ -219,16 +232,13 @@ const availableSubCategories = computed(() => {
 });
 
 const imageFile = ref(null);
+const imagePreview = ref('');
 
 const handleImageUpload = (event) => {
-  imageFile.value = event.target.files[0];
+  const file = event.target.files?.[0];
+  imageFile.value = file || null;
+  imagePreview.value = file ? URL.createObjectURL(file) : '';
 };
-
-const handleLogout = () => {
-  adminStore.clearAdmin();
-  router.push('/admin/login');
-};
-
 
 // Edit State
 const isEditing = ref(false);
@@ -246,6 +256,8 @@ const editProduct = (product) => {
     stock: product.stock,
     discountPercentage: product.discountPercentage || 0
   };
+  imageFile.value = null;
+  imagePreview.value = newProduct.value.image;
   // Handle Main Category selection for Edit
   for (const [main, subs] of Object.entries(categoryGroups)) {
     if (subs.includes(product.category)) {
@@ -261,6 +273,7 @@ const cancelEdit = () => {
     isEditing.value = false;
     editId.value = null;
     imageFile.value = null;
+    imagePreview.value = '';
     selectedMainCategory.value = "";
     newProduct.value = { title: '', price: '', description: '', category: '', image: '', stock: '', discountPercentage: 0 };
     const fileInput = document.querySelector('input[type="file"]');

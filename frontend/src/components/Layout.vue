@@ -55,6 +55,14 @@
 
         <!-- Cart Icon -->
         <div class="ml-auto flex items-center">
+           <div v-if="authStore.isAuthenticated" class="hidden sm:flex items-center gap-3 mr-2">
+             <span class="text-sm text-slate-400">Hi, {{ authStore.user?.fullName }}</span>
+             <button class="text-sm font-semibold text-slate-300 hover:text-blue-400 transition-colors" @click="signOut">Sign out</button>
+           </div>
+           <div v-else class="hidden sm:flex items-center gap-3 mr-2">
+             <button class="text-sm font-semibold text-slate-300 hover:text-blue-400 transition-colors" @click="goToAuth('signin')">Sign in</button>
+             <button class="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors" @click="goToAuth('signup')">Sign up</button>
+           </div>
            <button class="relative group p-3 rounded-full hover:bg-slate-800 transition-all duration-300" @click="showCart = true">
              <div class="relative">
                <svg class="w-7 h-7 text-slate-300 group-hover:text-blue-400 transition-colors duration-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -147,11 +155,13 @@
 import { ref, onMounted, provide } from "vue";
 import { useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/authStore";
 import { useToast } from 'vue-toastification';
 
 // Router & Store
 const router = useRouter();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const toast = useToast()
 
 // Reactive Variables
@@ -223,7 +233,25 @@ const goToCart = () => {
   cartStore.costCalculation();
 };
 
+const goToAuth = (mode) => {
+  router.push({ path: '/auth', query: mode === 'signup' ? { mode: 'signup' } : undefined });
+};
+
+const signOut = () => {
+  authStore.clearUser();
+  cartStore.item_details = [];
+  cartStore.totalQuantity();
+  cartStore.costCalculation();
+  toast.success('You have been signed out.', { timeout: 1500, hideProgressBar: true });
+};
+
 const goToCheckout = () => {
+  if (!authStore.isAuthenticated) {
+    toast.info('Please sign in or sign up before purchasing.', { timeout: 2000, hideProgressBar: true });
+    router.push({ path: '/auth', query: { redirect: '/payment' } });
+    showCart.value = false;
+    return;
+  }
   if (cartStore.total_buying_item > 0) {
     router.push("/payment")
     showCart.value = false

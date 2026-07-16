@@ -1,20 +1,10 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
 const pool = require('../models/db');
-const fs = require('fs');
-const { GoogleAuth } = require('google-auth-library');
 
-const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID?.trim();
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-const AI_PROVIDER = process.env.AI_PROVIDER?.trim().toLowerCase() || 'chatgpt';
-const AI_MODEL = process.env.AI_MODEL || 'gemini-1.5-mini';
-const AI_LOCATION = process.env.AI_LOCATION || 'us-central1';
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 const HUGGINGFACE_MODEL = process.env.HUGGINGFACE_MODEL || 'Qwen/Qwen2.5-7B-Instruct';
 const HUGGINGFACE_API_HOST = process.env.HUGGINGFACE_API_HOST || 'router.huggingface.co/v1';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
 const buildPrompt = (product, question) => {
   return `You are an expert product assistant. Answer the user question using only the following product information. If the question is outside this product's details, say that you only know about this product.
@@ -34,90 +24,6 @@ Question: ${question}
 Answer concisely and clearly.`;
 };
 
-const callGemini = async (prompt) => {
-  const useVertexAI = Boolean(GOOGLE_PROJECT_ID);
-  const useServiceAccount = Boolean(GOOGLE_APPLICATION_CREDENTIALS);
-
-  let endpoint;
-  let requestBody;
-  const headers = { 'Content-Type': 'application/json' };
-
-  if (useVertexAI) {
-    endpoint = `https://${AI_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_PROJECT_ID}/locations/${AI_LOCATION}/publishers/google/models/${AI_MODEL}:predict`;
-    requestBody = {
-      instances: [{ content: prompt }],
-      parameters: {
-        temperature: 0.2,
-        maxOutputTokens: 300,
-        topP: 0.95,
-        topK: 40
-      }
-    };
-  } else {
-    if (!GOOGLE_API_KEY) {
-      throw new Error('Missing GOOGLE_API_KEY in environment');
-    }
-    endpoint = `https://generativelanguage.googleapis.com/v1beta2/models/${AI_MODEL}:generateText?key=${GOOGLE_API_KEY}`;
-    requestBody = {
-      prompt: { text: prompt },
-      temperature: 0.2,
-      maxOutputTokens: 300
-    };
-  }
-
-  if (useServiceAccount) {
-    if (!fs.existsSync(path.resolve(GOOGLE_APPLICATION_CREDENTIALS))) {
-      throw new Error(`Service account file not found: ${GOOGLE_APPLICATION_CREDENTIALS}`);
-    }
-
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(GOOGLE_APPLICATION_CREDENTIALS);
-    const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
-    const client = await auth.getClient();
-    const token = await client.getAccessToken();
-    if (!token || !token.token) {
-      throw new Error('Failed to obtain access token from service account');
-    }
-    headers.Authorization = `Bearer ${token.token}`;
-  } else if (!useVertexAI) {
-    headers.Authorization = `Bearer ${GOOGLE_API_KEY}`;
-  }
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody)
-  });
-
-  const text = await response.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch (err) {
-    throw new Error(`Gemini request failed: invalid JSON response: ${text.slice(0,200)}`);
-  }
-
-  if (!response.ok) {
-    const errorText = data.error?.message || JSON.stringify(data);
-    throw new Error(`Gemini request failed: ${errorText}`);
-  }
-
-  if (useVertexAI) {
-    const prediction = data.predictions?.[0];
-    const output = prediction?.content || prediction?.candidates?.[0]?.content;
-    if (!output) {
-      throw new Error('No response returned from Gemini');
-    }
-    return output;
-  }
-
-  const candidate = data.candidates?.[0];
-  const output = candidate?.output || candidate?.content || data.output?.[0]?.content;
-  if (!output) {
-    throw new Error('No response returned from Gemini');
-  }
-
-  return output;
-};
 
 const callHuggingFace = async (prompt) => {
   if (!HUGGINGFACE_API_KEY) {
@@ -139,7 +45,7 @@ const callHuggingFace = async (prompt) => {
         }
       ],
       temperature: 0.2,
-      max_tokens: 256
+      max_tokens: 1000
     });
   } else {
     const encodedModelPath = HUGGINGFACE_MODEL.split('/').map(encodeURIComponent).join('/');
@@ -147,7 +53,7 @@ const callHuggingFace = async (prompt) => {
     requestBody = JSON.stringify({
       inputs: prompt,
       parameters: {
-        max_new_tokens: 256,
+        max_new_tokens: 1000,
         temperature: 0.2,
         top_p: 0.95,
         repetition_penalty: 1.05
@@ -246,118 +152,14 @@ const callHuggingFace = async (prompt) => {
   throw lastError;
 };
 
-const callChatGPT = async (prompt) => {
-  if (!OPENAI_API_KEY) {
-    throw new Error('Missing OPENAI_API_KEY in environment');
-  }
-
-  const endpoint = 'https://api.openai.com/v1/chat/completions';
-  const requestBody = JSON.stringify({
-    model: OPENAI_MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: 'You are an expert product assistant. Answer the user question using only the product information provided in the prompt.'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ],
-    temperature: 0.2,
-    max_tokens: 300,
-    top_p: 0.95
-  });
-
-  console.debug('ChatGPT request', {
-    endpoint,
-    model: OPENAI_MODEL,
-    bodyPreview: requestBody.slice(0, 400)
-  });
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: requestBody
-  });
-
-  const responseText = await response.text();
-  console.debug('ChatGPT raw response', {
-    endpoint,
-    status: response.status,
-    statusText: response.statusText,
-    contentType: response.headers.get('content-type'),
-    textPreview: responseText.slice(0, 500)
-  });
-
-  let data;
-  try {
-    data = JSON.parse(responseText);
-  } catch (err) {
-    throw new Error(`ChatGPT returned invalid JSON: ${responseText.slice(0,200)}`);
-  }
-
-  if (!response.ok) {
-    const errorText = data.error?.message || JSON.stringify(data);
-    throw new Error(`ChatGPT request failed: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  const answer = data.choices?.[0]?.message?.content || data.choices?.[0]?.text;
-  if (!answer) {
-    throw new Error(`No response returned from ChatGPT: ${JSON.stringify(data).slice(0,200)}`);
-  }
-
-  return answer;
-};
 
 const callAI = async (prompt) => {
-  const provider = AI_PROVIDER;
-  const isAuto = provider === 'auto';
-  const tryGemini = provider === 'gemini' || isAuto;
-  const tryHuggingFace = provider === 'huggingface' || isAuto;
-  let geminiError;
-
-  if (tryGemini) {
-    try {
-      const answer = await callGemini(prompt);
-      return { provider: 'Gemini', answer };
-    } catch (err) {
-      geminiError = err;
-      if (!tryHuggingFace) {
-        throw err;
-      }
-    }
+  try {
+    const answer = await callHuggingFace(prompt);
+    return { provider: 'Hugging Face', answer };
+  } catch (err) {
+    throw new Error(`Hugging Face failed: ${err.message}`);
   }
-
-  const tryChatGPT = provider === 'chatgpt' || provider === 'openai' || isAuto;
-  let chatGPTError;
-
-  if (tryChatGPT) {
-    try {
-      const answer = await callChatGPT(prompt);
-      return { provider: 'ChatGPT', answer };
-    } catch (err) {
-      chatGPTError = err;
-      if (!tryHuggingFace) {
-        throw err;
-      }
-    }
-  }
-
-  if (tryHuggingFace) {
-    try {
-      const answer = await callHuggingFace(prompt);
-      return { provider: 'Hugging Face', answer };
-    } catch (err) {
-      const combinedMessage = chatGPTError ? `ChatGPT failed: ${chatGPTError.message}. Hugging Face failed: ${err.message}` : err.message;
-      throw new Error(combinedMessage);
-    }
-  }
-
-  throw new Error('No AI provider configured. Set AI_PROVIDER=gemini|huggingface|auto and provide the required credentials.');
 };
 
 exports.answerQuestion = async (req, res) => {
@@ -398,6 +200,41 @@ exports.answerQuestion = async (req, res) => {
   }
 };
 
+const getRelevantCategories = (requirements) => {
+  const req = requirements.toLowerCase();
+  const categories = [];
+
+  if (req.includes('laptop') || req.includes('computer') || req.includes('macbook') || req.includes('zenbook') || req.includes('pc') || req.includes('coding') || req.includes('gaming') || req.includes('programmer')) {
+    categories.push('laptops');
+  }
+  if (req.includes('phone') || req.includes('mobile') || req.includes('smartphone') || req.includes('iphone') || req.includes('android')) {
+    categories.push('smartphones', 'mobile-accessories');
+  }
+  if (req.includes('tablet') || req.includes('ipad') || req.includes('tab')) {
+    categories.push('tablets');
+  }
+  if (req.includes('accessory') || req.includes('accessories') || req.includes('charger') || req.includes('case') || req.includes('cover')) {
+    categories.push('mobile-accessories', 'kitchen-accessories', 'sports-accessories');
+  }
+  if (req.includes('furniture') || req.includes('sofa') || req.includes('bed') || req.includes('chair') || req.includes('table') || req.includes('desk') || req.includes('couch')) {
+    categories.push('furniture');
+  }
+  if (req.includes('decor') || req.includes('decoration') || req.includes('home') || req.includes('living') || req.includes('bedroom') || req.includes('room') || req.includes('wall') || req.includes('lamp') || req.includes('light')) {
+    categories.push('home-decoration', 'furniture');
+  }
+  if (req.includes('kitchen') || req.includes('cook') || req.includes('food') || req.includes('cup') || req.includes('plate') || req.includes('knife') || req.includes('pan') || req.includes('pot')) {
+    categories.push('kitchen-accessories');
+  }
+  if (req.includes('sport') || req.includes('sports') || req.includes('fitness') || req.includes('gym') || req.includes('game') || req.includes('play') || req.includes('outdoor') || req.includes('active') || req.includes('exercise')) {
+    categories.push('sports-accessories');
+  }
+  if (req.includes('glass') || req.includes('glasses') || req.includes('sunglasses') || req.includes('spectacles') || req.includes('shade') || req.includes('shades') || req.includes('sun')) {
+    categories.push('sunglasses');
+  }
+
+  return [...new Set(categories)];
+};
+
 exports.recommendProducts = async (req, res) => {
   try {
     const { requirements } = req.body;
@@ -406,7 +243,20 @@ exports.recommendProducts = async (req, res) => {
       return res.status(400).json({ message: 'requirements is required' });
     }
 
-    const result = await pool.query('SELECT * FROM products');
+    const relevantCategories = getRelevantCategories(requirements);
+    let queryText = 'SELECT * FROM products';
+    let queryParams = [];
+
+    if (relevantCategories.length > 0) {
+      queryText = 'SELECT * FROM products WHERE category = ANY($1)';
+      queryParams = [relevantCategories];
+    }
+
+    let result = await pool.query(queryText, queryParams);
+    if (result.rowCount === 0 && relevantCategories.length > 0) {
+      result = await pool.query('SELECT * FROM products');
+    }
+
     const productsList = result.rows.map(p => ({
       id: p.id,
       title: p.title,
@@ -421,7 +271,7 @@ ${JSON.stringify(productsList, null, 2)}
 
 User Requirements: "${requirements.trim()}"
 
-Based on the user's requirements, recommend the top 1 to 4 products from the catalog above. Provide a friendly conversational response explaining why they are recommended.
+Based on the user's requirements, recommend the top 1 to 4 products from the catalog above. Provide a friendly conversational response explaining why they are recommended. Keep your explanation concise and under 150 words.
 At the very end of your response, output the exact product IDs of the recommended products in this format: [RECOMMENDED_IDS: id1, id2, ...].
 For example: "[RECOMMENDED_IDS: 4, 12]". If no products match, do not output this tag.`;
 
@@ -440,26 +290,35 @@ For example: "[RECOMMENDED_IDS: 4, 12]". If no products match, do not output thi
     let recommendedProducts = [];
     if (recommendedIds.length > 0) {
       const productsRes = await pool.query('SELECT * FROM products WHERE id = ANY($1)', [recommendedIds]);
-      recommendedProducts = productsRes.rows.map(p => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        category: p.category,
-        price: Number(p.price),
-        discountPercentage: Number(p.discount_percentage),
-        rating: Number(p.rating),
-        stock: p.stock,
-        brand: p.brand,
-        sku: p.sku,
-        weight: Number(p.weight),
-        warrantyInformation: p.warranty_information,
-        shippingInformation: p.shipping_information,
-        availabilityStatus: p.availability_status,
-        thumbnail: p.thumbnail,
-        images: p.images,
-        reviews: p.reviews,
-        dimensions: p.dimensions
-      }));
+      
+      const productMap = {};
+      productsRes.rows.forEach(p => {
+        productMap[p.id] = p;
+      });
+
+      recommendedProducts = recommendedIds
+        .map(id => productMap[id])
+        .filter(Boolean)
+        .map(p => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          category: p.category,
+          price: Number(p.price),
+          discountPercentage: Number(p.discount_percentage),
+          rating: Number(p.rating),
+          stock: p.stock,
+          brand: p.brand,
+          sku: p.sku,
+          weight: Number(p.weight),
+          warrantyInformation: p.warranty_information,
+          shippingInformation: p.shipping_information,
+          availabilityStatus: p.availability_status,
+          thumbnail: p.thumbnail,
+          images: p.images,
+          reviews: p.reviews,
+          dimensions: p.dimensions
+        }));
     }
 
     res.json({

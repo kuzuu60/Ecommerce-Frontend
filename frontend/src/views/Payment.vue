@@ -100,10 +100,12 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useCartStore } from '@/store/cartStore';
+import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
 import { initiateEsewaPayment } from '@/services/esewaService';
 
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const toast = useToast();
 const selectedPayment = ref('cash');
 
@@ -150,7 +152,10 @@ const processOrder = async (isEsewa = false) => {
 
         const res = await fetch('http://localhost:5000/api/orders', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authStore.token}`
+            },
             body: JSON.stringify({ 
                 items: orderItems,
                 customerInfo: customerDetails.value

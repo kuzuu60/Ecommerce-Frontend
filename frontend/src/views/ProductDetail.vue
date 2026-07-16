@@ -105,9 +105,11 @@ const toast = useToast();
 import { computed, inject, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/authStore";
 
 // Store & Route
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter(); // Ensure useRouter is imported and assigned
 
@@ -133,6 +135,14 @@ const product = computed(() => {
 
 // Function to Add Product to Cart
 const addToCart = (title, thumbnail, price) => {
+  if (!authStore.isAuthenticated) {
+    toast.info("Please sign in or sign up before adding items to your cart.", {
+      timeout: 2500,
+      hideProgressBar: true,
+    });
+    router.push({ path: '/auth', query: { redirect: route.fullPath } });
+    return;
+  }
   cartStore.addToCart(quantity.value, route.params.id, title, thumbnail, price);
   cartStore.totalQuantity();
   showMessage();

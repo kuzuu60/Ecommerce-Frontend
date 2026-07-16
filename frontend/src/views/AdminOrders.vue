@@ -1,10 +1,8 @@
 <template>
   <div class="p-6 bg-slate-950 min-h-screen text-slate-100">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+    <div class="mb-8">
       <h1 class="text-3xl font-bold text-blue-400">Customer Orders</h1>
-      <button @click="handleLogout" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-semibold transition-all">
-        Logout
-      </button>
+      <p class="mt-2 text-slate-400">Review orders and update their fulfillment status.</p>
     </div>
     
     <div v-if="loading" class="text-center py-10">
@@ -47,12 +45,9 @@
             </td>
             <td class="p-4 font-bold text-blue-400">Rs. {{ order.totalAmount }}</td>
             <td class="p-4">
-              <span :class="[
-                'px-3 py-1 rounded-full text-xs font-semibold',
-                order.status === 'Pending' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-green-500/10 text-green-500 border border-green-500/20'
-              ]">
-                {{ order.status }}
-              </span>
+              <select v-model="order.status" @change="updateOrderStatus(order)" :disabled="updatingOrderId === order.id" class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50">
+                <option v-for="status in orderStatuses" :key="status" :value="status">{{ status }}</option>
+              </select>
             </td>
           </tr>
         </tbody>
@@ -63,15 +58,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import { useAdminStore } from '@/store/adminStore';
 
-const router = useRouter();
-const adminStore = useAdminStore();
 const orders = ref([]);
 const loading = ref(true);
 const toast = useToast();
+const orderStatuses = ['Pending', 'Paid', 'Confirmed', 'Shipped', 'Delivered'];
+const updatingOrderId = ref(null);
 
 const fetchOrders = async () => {
     try {
@@ -104,9 +97,28 @@ const formatDate = (dateString) => {
     });
 };
 
-const handleLogout = () => {
-    adminStore.clearAdmin();
-    router.push('/admin/login');
+const updateOrderStatus = async (order) => {
+    updatingOrderId.value = order.id;
+    try {
+        const token = localStorage.getItem('admin_token');
+        const res = await fetch(`http://localhost:5000/api/orders/${order.id}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: token ? `Bearer ${token}` : ''
+            },
+            body: JSON.stringify({ status: order.status })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Unable to update order status');
+        toast.success('Order status updated', { timeout: 1500, hideProgressBar: true });
+    } catch (err) {
+        console.error(err);
+        toast.error(err.message || 'Could not update order status');
+        await fetchOrders();
+    } finally {
+        updatingOrderId.value = null;
+    }
 };
 
 onMounted(() => {

@@ -110,13 +110,16 @@
 
 <script setup>
 import { ref, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useCartStore } from '@/store/cartStore';
+import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
 
 const router = useRouter();
+const route = useRoute();
 const toast = useToast();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 
 const messages = ref([
   {
@@ -147,6 +150,14 @@ const goToProduct = (product) => {
 };
 
 const addToCart = (product) => {
+  if (!authStore.isAuthenticated) {
+    toast.info("Please sign in or sign up before adding items to your cart.", {
+      timeout: 2500,
+      hideProgressBar: true,
+    });
+    router.push({ path: '/auth', query: { redirect: route.fullPath } });
+    return;
+  }
   const price = getDiscountedPrice(product);
   cartStore.addToCart(1, product.id, product.title, product.thumbnail, price);
   cartStore.totalQuantity();

@@ -8,6 +8,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const authRoutes = require('./routes/authRoutes');
 const qaRoutes = require('./routes/qaRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const DEFAULT_PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
@@ -25,6 +26,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/qa', qaRoutes);
+app.use('/api/admin/users', userRoutes);
 
 const startServer = (port, attempt = 1) => {
     const server = app.listen(port, () => {

@@ -8,17 +8,22 @@ const isAdminAuthenticated = () => {
   return Boolean(token);
 };
 
-router.beforeEach((to, from, next) => {
+const isUserAuthenticated = () => {
+  const token = localStorage.getItem('user_token');
+  return Boolean(token);
+};
+
+router.beforeEach((to) => {
   const auth = isAdminAuthenticated();
   if (to.meta.requiresAuth && !auth) {
-    return next('/admin/login');
+    return { path: '/admin/login', query: { redirect: to.fullPath } };
   }
 
-  if (to.path === '/admin/login' && auth) {
-    return next('/admin');
+  if (to.meta.requiresUserAuth && !isUserAuthenticated()) {
+    return { path: '/auth', query: { redirect: to.fullPath } };
   }
 
-  next();
+  return true;
 });
 
 export default router

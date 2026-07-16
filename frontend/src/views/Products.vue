@@ -116,12 +116,14 @@
 import { ref, watch, inject, watchEffect, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthStore } from "@/store/authStore";
 import { useToast } from "vue-toastification";
 
 const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const selectedTab = ref(route.meta.isDeals ? 'deals' : route.params.category);
 const selectedProductList = ref([]);
 const products = inject('products');
@@ -217,6 +219,14 @@ const goToProduct = (id, selectedTab) => {
 };
 
 const addToCart = (id, title, thumbnail, price) => {
+  if (!authStore.isAuthenticated) {
+    toast.info("Please sign in or sign up before adding items to your cart.", {
+      timeout: 2500,
+      hideProgressBar: true,
+    });
+    router.push({ path: '/auth', query: { redirect: route.fullPath } });
+    return;
+  }
   cartStore.addToCart(1, id, title, thumbnail, price);
   cartStore.totalQuantity();
   showMessage();
