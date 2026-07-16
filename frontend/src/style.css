@@ -25,6 +25,12 @@
 @theme {
   --font-display: 'DM Serif Display', Georgia, serif;
   --font-body:    'Inter', system-ui, sans-serif;
+  --color-cream-50:  var(--cream-50);
+  --color-cream-100: var(--cream-100);
+  --color-cream-200: var(--cream-200);
+  --color-cream-300: var(--cream-300);
+  --color-stone-900: var(--stone-900);
+  --color-amber-600: var(--amber-600);
 }
 
 /* ─── Base Reset ─────────────────────────────────────────────── */
@@ -43,6 +49,12 @@ body {
   background-color: var(--cream-50);
   color: var(--stone-800);
   line-height: 1.6;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--stone-500);
+  opacity: 0.62;
 }
 
 h1, h2, h3 {

@@ -1,25 +1,27 @@
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-12">
-    <div class="w-full max-w-md bg-slate-900/95 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-slate-900/50">
-      <button @click="router.push('/')" class="mb-6 text-sm text-slate-400 transition-colors hover:text-blue-400">
+  <div class="admin-login min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="admin-login-card w-full max-w-md rounded-[2rem] p-8 sm:p-10">
+      <button @click="router.push('/')" class="mb-8 flex items-center gap-2 text-sm font-semibold text-stone-500 transition-colors hover:text-amber-600">
         ← Back to storefront
       </button>
-      <h1 class="text-3xl font-semibold text-white mb-6 text-center">Admin Login</h1>
+      <p class="section-label mb-3">Luxe Commerce</p>
+      <h1 class="admin-login-title mb-3">Admin Login</h1>
+      <p class="mb-8 text-sm text-stone-500">Enter your administrator credentials to manage the storefront.</p>
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
-          <label class="block text-sm font-medium text-slate-400 mb-2">Username</label>
-          <input v-model="username" type="text" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
+          <label class="admin-field-label">Username</label>
+          <input v-model="username" type="text" required class="admin-field-input" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-400 mb-2">Password</label>
-          <input v-model="password" type="password" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-blue-500" />
+          <label class="admin-field-label">Password</label>
+          <input v-model="password" type="password" required class="admin-field-input" />
         </div>
-        <button type="submit" :disabled="loading" class="w-full rounded-2xl bg-blue-600 px-4 py-3 text-white font-semibold hover:bg-blue-500 transition-colors disabled:opacity-50">
+        <button type="submit" :disabled="loading" class="admin-login-button">
           {{ loading ? 'Signing in...' : 'Sign in' }}
         </button>
       </form>
-      <p v-if="error" class="mt-4 text-sm text-red-400">{{ error }}</p>
-      <p class="mt-6 text-sm text-slate-500">Only authorized admin users can access the dashboard.</p>
+      <p v-if="error" class="admin-login-error mt-4">{{ error }}</p>
+      <p class="mt-7 text-xs leading-relaxed text-stone-400">Only authorized administrators can access the dashboard.</p>
     </div>
   </div>
 </template>
@@ -29,6 +31,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAdminStore } from '@/store/adminStore';
 import { useToast } from 'vue-toastification';
+import { API_BASE_URL } from '@/config/api';
 
 const router = useRouter();
 const adminStore = useAdminStore();
@@ -44,7 +47,7 @@ const handleLogin = async () => {
   error.value = null;
 
   try {
-    const res = await fetch('http://localhost:5001/api/auth/login', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username.value, password: password.value })
@@ -68,3 +71,84 @@ const handleLogin = async () => {
   }
 };
 </script>
+
+<style scoped>
+.admin-login {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(217, 119, 6, 0.1), transparent 28rem),
+    var(--cream-50);
+}
+
+.admin-login-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--cream-200);
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-login-title {
+  color: var(--stone-900);
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.admin-field-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--stone-600);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-field-input {
+  width: 100%;
+  border: 1px solid var(--cream-200);
+  border-radius: 0.9rem;
+  background: var(--cream-50);
+  color: var(--stone-800);
+  outline: none;
+  padding: 0.85rem 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-field-input:focus {
+  border-color: var(--stone-500);
+  box-shadow: 0 0 0 4px rgba(28, 25, 23, 0.06);
+}
+
+.admin-login-button {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: var(--stone-900);
+  color: var(--cream-50);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 1rem;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.admin-login-button:hover:not(:disabled) {
+  background: var(--stone-700);
+  transform: translateY(-1px);
+}
+
+.admin-login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-login-error {
+  border: 1px solid rgba(220, 38, 38, 0.16);
+  border-radius: 0.8rem;
+  background: rgba(220, 38, 38, 0.06);
+  color: #b91c1c;
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+}
+</style>

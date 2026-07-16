@@ -82,9 +82,17 @@
             </div>
             <div class="summary-line">
               <span>Shipping</span>
-              <span>Rs. {{ cartStore.shippingCost.toLocaleString('en-IN') }}</span>
+              <span v-if="cartStore.subTotal >= FREE_SHIPPING_THRESHOLD && cartStore.subTotal > 0" class="free-shipping">Free</span>
+              <span v-else>Rs. {{ cartStore.shippingCost.toLocaleString('en-IN') }}</span>
             </div>
           </div>
+          <p v-if="cartStore.subTotal > 0 && cartStore.subTotal < FREE_SHIPPING_THRESHOLD" class="shipping-note">
+            Add Rs. {{ (FREE_SHIPPING_THRESHOLD - cartStore.subTotal).toLocaleString('en-IN') }} for free shipping.
+          </p>
+          <p v-else-if="cartStore.subTotal >= FREE_SHIPPING_THRESHOLD" class="shipping-note free-shipping">
+            Free shipping applied.
+          </p>
+
           <div class="summary-total">
             <span>Total</span>
             <span style="color: var(--amber-600);">Rs. {{ cartStore.totalCost.toLocaleString('en-IN') }}</span>
@@ -110,10 +118,11 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useCartStore } from '@/store/cartStore';
+import { FREE_SHIPPING_THRESHOLD, useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
 import { initiateEsewaPayment } from '@/services/esewaService';
+import { API_BASE_URL } from '@/config/api';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
@@ -137,7 +146,7 @@ const processOrder = async (isEsewa = false) => {
   try {
     const orderItems = cartStore.item_details.filter(i => i.checked).map(i => ({ id: i.id, quantity: i.quantity }));
     if (!orderItems.length) { toast.warning("Please select items first."); return false; }
-    const res = await fetch('http://localhost:5001/api/orders', {
+    const res = await fetch(`${API_BASE_URL}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
       body: JSON.stringify({ items: orderItems, customerInfo: customerDetails.value })
@@ -261,4 +270,6 @@ const handleEsewa = () => {
   display: flex; justify-content: space-between; padding: 1.25rem 0 0;
   border-top: 1px solid var(--cream-200); font-size: 1.2rem; font-weight: 700; color: var(--stone-900);
 }
+.shipping-note { color: var(--stone-400); font-size: 0.72rem; margin: -0.5rem 0 1.25rem; }
+.free-shipping { color: #16A34A; font-weight: 700; }
 </style>

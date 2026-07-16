@@ -1,6 +1,9 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+export const FREE_SHIPPING_THRESHOLD = 5000;
+const DEFAULT_SHIPPING_FEE = 100;
+
 export const useCartStore = defineStore("cart", () => {
   // Reactive State
   const item_details = ref(JSON.parse(localStorage.getItem('luxe_cart_items')) || []); 
@@ -50,23 +53,20 @@ export const useCartStore = defineStore("cart", () => {
 
   // Function: Calculate costs (subtotal, shipping, total)
   const costCalculation = () => {
-    // Calculate total shipping cost for checked items
-    shippingCost.value = item_details.value
-      .map((item) => (item.checked ? item.shipping_fee : 0))
-      .reduce((a, b) => a + b, 0);
+    const checkedItems = item_details.value.filter((item) => item.checked);
 
-    // Calculate subtotal for checked items
-    subTotal.value = item_details.value
-      .map((item) => ({
-        quantity: item.checked ? item.quantity : 0,
-        price: item.checked ? item.price : 0,
-      }))
+    // Calculate subtotal for checked items before shipping or discounts.
+    subTotal.value = checkedItems
+      .map((item) => ({ quantity: item.quantity, price: item.price }))
       .reduce((sum, item) => sum + item.quantity * item.price, 0);
 
-    // Calculate total quantity of checked items
-    total_buying_item.value = item_details.value
-      .map((item) => (item.checked ? item.quantity : 0))
-      .reduce((a, b) => a + b, 0);
+    // Orders at or above the threshold receive free shipping.
+    const standardShipping = checkedItems
+      .reduce((sum, item) => sum + Number(item.shipping_fee ?? DEFAULT_SHIPPING_FEE), 0);
+    shippingCost.value = subTotal.value >= FREE_SHIPPING_THRESHOLD ? 0 : standardShipping;
+
+    total_buying_item.value = checkedItems
+      .reduce((sum, item) => sum + item.quantity, 0);
 
     subTotal.value = Number(subTotal.value.toFixed(2)); // Ensure it's still a number
     totalCost.value = Number((subTotal.value + shippingCost.value).toFixed(2)); // Ensure it's still a number

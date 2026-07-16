@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS products (
     category VARCHAR(100) NOT NULL,
     price NUMERIC(12,2) NOT NULL,
     discount_percentage NUMERIC(5,2) DEFAULT 0,
-    rating NUMERIC(3,2) DEFAULT 0,
     stock INT DEFAULT 0,
     brand VARCHAR(100),
     sku VARCHAR(100),
@@ -49,9 +48,11 @@ CREATE TABLE IF NOT EXISTS products (
     availability_status VARCHAR(50),
     thumbnail TEXT,
     images JSONB,
-    reviews JSONB,
     dimensions JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE products ADD COLUMN IF NOT EXISTS specs TEXT;
+ALTER TABLE products DROP COLUMN IF EXISTS rating;
+ALTER TABLE products DROP COLUMN IF EXISTS reviews;
+ALTER TABLE products DROP COLUMN IF EXISTS minimum_order_quantity;

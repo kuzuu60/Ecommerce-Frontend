@@ -24,7 +24,7 @@ const tokenize = (value) => normalize(value)
     .filter((token) => token.length > 1 && !stopWords.has(token));
 
 const parseBudget = (requirements) => {
-    const text = String(requirements || '').replace(/,/g, ' ');
+    const text = String(requirements || '').replace(/,/g, '');
     const match = text.match(/(?:under|below|less than|upto|up to|maximum|max|within|budget)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh)?/i);
     if (!match) return null;
 
@@ -97,7 +97,6 @@ const recommendProducts = (products, requirements) => {
         return { product, score, matches, inBudget };
     }).sort((left, right) => {
         if (right.score !== left.score) return right.score - left.score;
-        if (Number(right.product.rating) !== Number(left.product.rating)) return Number(right.product.rating) - Number(left.product.rating);
         return Number(left.product.price) - Number(right.product.price);
     });
 };

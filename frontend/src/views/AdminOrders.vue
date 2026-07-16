@@ -59,6 +59,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
+import { API_BASE_URL } from '@/config/api';
 
 const orders = ref([]);
 const loading = ref(true);
@@ -69,7 +70,7 @@ const updatingOrderId = ref(null);
 const fetchOrders = async () => {
     try {
         const token = localStorage.getItem('admin_token');
-    const res = await fetch('http://localhost:5001/api/orders', {
+    const res = await fetch(`${API_BASE_URL}/api/orders`, {
       headers: {
         Authorization: token ? `Bearer ${token}` : ''
       }
@@ -101,7 +102,7 @@ const updateOrderStatus = async (order) => {
     updatingOrderId.value = order.id;
     try {
         const token = localStorage.getItem('admin_token');
-        const res = await fetch(`http://localhost:5001/api/orders/${order.id}/status`, {
+        const res = await fetch(`${API_BASE_URL}/api/orders/${order.id}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

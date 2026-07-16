@@ -11,7 +11,8 @@
       </div>
       <div class="summary-row">
         <span>Shipping</span>
-        <span>Rs. {{ cartStore.shippingCost }}</span>
+        <span v-if="cartStore.subTotal >= FREE_SHIPPING_THRESHOLD && cartStore.subTotal > 0" class="free-shipping">Free</span>
+        <span v-else>Rs. {{ cartStore.shippingCost }}</span>
       </div>
       <div class="summary-row" style="color: #16A34A;">
         <span>Discount</span>
@@ -24,6 +25,13 @@
       <span>Rs. {{ cartStore.totalCost }}</span>
     </div>
 
+    <p v-if="cartStore.subTotal > 0 && cartStore.subTotal < FREE_SHIPPING_THRESHOLD" class="shipping-note">
+      Add Rs. {{ (FREE_SHIPPING_THRESHOLD - cartStore.subTotal).toLocaleString('en-IN') }} for free shipping.
+    </p>
+    <p v-else-if="cartStore.subTotal >= FREE_SHIPPING_THRESHOLD" class="shipping-note free-shipping">
+      Free shipping applied.
+    </p>
+
     <button class="checkout-btn" @click="paymentPage(cartStore.total_buying_item)" :disabled="cartStore.total_buying_item <= 0">
       Proceed to Checkout ({{ cartStore.total_buying_item }})
     </button>
@@ -31,7 +39,7 @@
 </template>
 
 <script setup>
-import { useCartStore } from '@/store/cartStore';
+import { FREE_SHIPPING_THRESHOLD, useCartStore } from '@/store/cartStore';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
@@ -72,4 +80,6 @@ const paymentPage = (item) => {
 }
 .checkout-btn:hover:not(:disabled) { background: var(--stone-700); transform: translateY(-1px); }
 .checkout-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.shipping-note { color: var(--stone-400); font-size: 0.72rem; margin: -0.5rem 0 1rem; }
+.free-shipping { color: #16A34A; font-weight: 700; }
 </style>

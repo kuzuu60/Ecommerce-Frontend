@@ -31,7 +31,7 @@
               Get in touch
             </button>
           </div>
-          <div ref="heroMeta" style="opacity: 0;" class="hero-meta mt-8">
+          <div v-show="!authStore.isAuthenticated" ref="heroMeta" style="opacity: 0;" class="hero-meta mt-8">
             <span>New here?</span>
             <button class="hero-link" @click="router.push('/auth?mode=signup')">Create account</button>
             <span class="hero-divider">·</span>
@@ -101,12 +101,14 @@
 <script setup>
 import { ref, onMounted, inject, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/store/authStore';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const router = useRouter();
+const authStore = useAuthStore();
 const products = inject("products", ref([]));
 
 // Hero refs

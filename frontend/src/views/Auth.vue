@@ -85,6 +85,7 @@ import { reactive, ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/store/authStore';
+import { API_BASE_URL } from '@/config/api';
 
 const router = useRouter();
 const route = useRoute();
@@ -153,7 +154,7 @@ const submitForm = async () => {
     const body = isSignUp.value
       ? { fullName: form.fullName, email: form.email, password: form.password }
       : { email: form.email, password: form.password };
-    const response = await fetch(`http://localhost:5001/api/auth/${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

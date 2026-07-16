@@ -191,6 +191,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import ActionStatusModal from '../components/ActionStatusModal.vue';
+import { API_BASE_URL } from '@/config/api';
 
 const toast = useToast();
 const products = ref([]);
@@ -198,7 +199,7 @@ const loading = ref(false);
 
 const fetchProducts = async () => {
   try {
-    const response = await fetch('http://localhost:5001/api/products');
+    const response = await fetch(`${API_BASE_URL}/api/products`);
     if (!response.ok) throw new Error('Failed to fetch products');
     const result = await response.json();
     products.value = result.products.sort((a, b) => b.id - a.id);
@@ -326,7 +327,7 @@ const updateProduct = async () => {
     }
 
     const token = localStorage.getItem('admin_token');
-    const res = await fetch(`http://localhost:5001/api/products/${editId.value}`, {
+    const res = await fetch(`${API_BASE_URL}/api/products/${editId.value}`, {
       method: 'PUT',
       headers: {
         Authorization: token ? `Bearer ${token}` : ''
@@ -377,7 +378,7 @@ const addProduct = async () => {
     }
 
     const token = localStorage.getItem('admin_token');
-    const res = await fetch('http://localhost:5001/api/products', {
+    const res = await fetch(`${API_BASE_URL}/api/products`, {
       method: 'POST',
       headers: {
         Authorization: token ? `Bearer ${token}` : ''
@@ -413,7 +414,7 @@ const handleDeleteConfirm = async () => {
   
   try {
     const token = localStorage.getItem('admin_token');
-    const res = await fetch(`http://localhost:5001/api/products/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
       method: 'DELETE',
       headers: {
         Authorization: token ? `Bearer ${token}` : ''

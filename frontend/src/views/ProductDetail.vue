@@ -134,6 +134,7 @@ import { computed, inject, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import { API_BASE_URL } from '@/config/api';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
@@ -168,7 +169,7 @@ const qaError = ref(null);
 const similarProducts = ref([]);
 const fetchRecommendations = async (productId) => {
   try {
-    const res = await fetch(`http://localhost:5001/api/products/${productId}/recommendations?topN=4`);
+    const res = await fetch(`${API_BASE_URL}/api/products/${productId}/recommendations?topN=4`);
     if (!res.ok) return;
     similarProducts.value = await res.json();
   } catch { similarProducts.value = []; }
@@ -177,7 +178,7 @@ const askQuestion = async () => {
   if (!qaQuestion.value.trim() || !product.value) return;
   qaLoading.value = true; qaError.value = null; qaAnswer.value = ''; qaProvider.value = '';
   try {
-    const res = await fetch('http://localhost:5001/api/qa', {
+    const res = await fetch(`${API_BASE_URL}/api/qa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId: product.value.id, question: qaQuestion.value.trim() })

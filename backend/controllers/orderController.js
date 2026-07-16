@@ -2,6 +2,9 @@ const pool = require('../models/db');
 const { getOrdersDb } = require('../models/orderModel');
 const { v4: uuidv4 } = require('uuid');
 
+const FREE_SHIPPING_THRESHOLD = 5000;
+const SHIPPING_FEE_PER_LINE = 100;
+
 exports.createOrder = async (req, res) => {
     const client = await pool.connect();
     try {
@@ -39,6 +42,12 @@ exports.createOrder = async (req, res) => {
                 quantity: item.quantity
             });
         }
+
+        const subtotal = totalAmount;
+        const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD
+            ? 0
+            : verifiedItems.length * SHIPPING_FEE_PER_LINE;
+        totalAmount = subtotal + shippingCost;
 
         // Deduct stock
         for (const verified of verifiedItems) {
@@ -90,7 +99,13 @@ exports.createOrder = async (req, res) => {
         ]);
 
         await client.query('COMMIT');
-        res.json({ message: 'Order placed successfully', orderId: orderData.id });
+        res.json({
+            message: 'Order placed successfully',
+            orderId: orderData.id,
+            subtotal,
+            shippingCost,
+            totalAmount
+        });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error("Error placing order:", err);
@@ -119,6 +134,36 @@ exports.getAllOrders = async (req, res) => {
     } catch (err) {
         console.error("Error fetching orders:", err);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+exports.getUserOrders = async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT order_id, name, phone, address, items, total_amount, status, created_at
+             FROM orders
+             WHERE user_id = $1
+             ORDER BY created_at DESC`,
+            [req.user.id]
+        );
+
+        const orders = rows.map(order => ({
+            id: order.order_id,
+            customerInfo: {
+                fullName: order.name,
+                phone: order.phone,
+                address: order.address
+            },
+            items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
+            totalAmount: parseFloat(order.total_amount),
+            status: order.status,
+            createdAt: order.created_at
+        }));
+
+        res.json(orders);
+    } catch (err) {
+        console.error('Error fetching user orders:', err);
+        res.status(500).json({ message: 'Unable to load your orders' });
     }
 };
 

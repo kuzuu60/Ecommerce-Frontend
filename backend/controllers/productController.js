@@ -12,7 +12,6 @@ exports.getAllProducts = async (req, res) => {
             category: p.category,
             price: Number(p.price),
             discountPercentage: Number(p.discount_percentage),
-            rating: Number(p.rating),
             stock: p.stock,
             brand: p.brand,
             sku: p.sku,
@@ -22,7 +21,6 @@ exports.getAllProducts = async (req, res) => {
             availabilityStatus: p.availability_status,
             thumbnail: p.thumbnail,
             images: p.images,
-            reviews: p.reviews,
             dimensions: p.dimensions
         }));
         res.json({ products });
@@ -48,7 +46,6 @@ exports.getProductById = async (req, res) => {
             category: p.category,
             price: Number(p.price),
             discountPercentage: Number(p.discount_percentage),
-            rating: Number(p.rating),
             stock: p.stock,
             brand: p.brand,
             sku: p.sku,
@@ -58,7 +55,6 @@ exports.getProductById = async (req, res) => {
             availabilityStatus: p.availability_status,
             thumbnail: p.thumbnail,
             images: p.images,
-            reviews: p.reviews,
             dimensions: p.dimensions
         };
         res.json(product);
@@ -86,10 +82,10 @@ exports.createProduct = async (req, res) => {
         const queryText = `
             INSERT INTO products (
                 title, price, description, specs, category, thumbnail, images,
-                rating, stock, brand, sku, weight, warranty_information,
+                stock, brand, sku, weight, warranty_information,
                 shipping_information, availability_status, discount_percentage,
-                reviews, dimensions
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                dimensions
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
             RETURNING *;
         `;
 
@@ -102,7 +98,6 @@ exports.createProduct = async (req, res) => {
             category,
             imageUrl,
             JSON.stringify([imageUrl]),
-            4.5,
             stock ? parseInt(stock, 10) : 100,
             'Generic',
             '',
@@ -111,7 +106,6 @@ exports.createProduct = async (req, res) => {
             'Ships in 1 month',
             'In Stock',
             discountPercentage ? parseFloat(discountPercentage) : 0,
-            JSON.stringify([]),
             JSON.stringify({})
         ];
 
@@ -126,7 +120,6 @@ exports.createProduct = async (req, res) => {
             category: p.category,
             thumbnail: p.thumbnail,
             images: p.images,
-            rating: Number(p.rating),
             stock: p.stock,
             brand: p.brand,
             sku: p.sku,
@@ -135,7 +128,6 @@ exports.createProduct = async (req, res) => {
             shippingInformation: p.shipping_information,
             availabilityStatus: p.availability_status,
             discountPercentage: Number(p.discount_percentage),
-            reviews: p.reviews,
             dimensions: p.dimensions
         };
 
@@ -227,7 +219,6 @@ exports.updateProduct = async (req, res) => {
             category: p.category,
             thumbnail: p.thumbnail,
             images: p.images,
-            rating: Number(p.rating),
             stock: p.stock,
             brand: p.brand,
             sku: p.sku,
@@ -236,7 +227,6 @@ exports.updateProduct = async (req, res) => {
             shippingInformation: p.shipping_information,
             availabilityStatus: p.availability_status,
             discountPercentage: Number(p.discount_percentage),
-            reviews: p.reviews,
             dimensions: p.dimensions
         };
 

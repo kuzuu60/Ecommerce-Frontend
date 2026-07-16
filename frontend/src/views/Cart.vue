@@ -47,7 +47,8 @@
             </div>
             <div class="summary-line">
               <span>Shipping</span>
-              <span>Rs. {{ cartStore.shippingCost }}</span>
+              <span v-if="cartStore.subTotal >= FREE_SHIPPING_THRESHOLD && cartStore.subTotal > 0" class="free-shipping">Free</span>
+              <span v-else>Rs. {{ cartStore.shippingCost }}</span>
             </div>
             <div class="summary-line">
               <span>Discount</span>
@@ -58,6 +59,13 @@
             <span>Total</span>
             <span>Rs. {{ cartStore.totalCost }}</span>
           </div>
+
+          <p v-if="cartStore.subTotal > 0 && cartStore.subTotal < FREE_SHIPPING_THRESHOLD" class="shipping-note">
+            Add Rs. {{ (FREE_SHIPPING_THRESHOLD - cartStore.subTotal).toLocaleString('en-IN') }} for free shipping.
+          </p>
+          <p v-else-if="cartStore.subTotal >= FREE_SHIPPING_THRESHOLD" class="shipping-note free-shipping">
+            Free shipping applied.
+          </p>
 
           <!-- Promo -->
           <div class="promo-box">
@@ -92,7 +100,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useCartStore } from '@/store/cartStore';
+import { FREE_SHIPPING_THRESHOLD, useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
@@ -210,4 +218,6 @@ const paymentPage = () => {
   display: flex; align-items: center; justify-content: center;
   color: var(--stone-400);
 }
+.shipping-note { color: var(--stone-400); font-size: 0.72rem; margin: -0.5rem 0 1rem; }
+.free-shipping { color: #16A34A; font-weight: 700; }
 </style>

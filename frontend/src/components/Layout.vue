@@ -12,7 +12,7 @@
           
           <!-- Left: Logo & Mobile Toggle -->
           <div class="flex items-center gap-3 shrink-0">
-            <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 rounded-full transition-all" style="color: var(--stone-600);">
+            <button @click="toggleMobileMenu" class="md:hidden p-2 rounded-full transition-all" style="color: var(--stone-600);">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
               </svg>
@@ -157,15 +157,91 @@
 
             <!-- Auth -->
             <div class="hidden sm:block pl-1">
-              <div v-if="authStore.isAuthenticated" class="flex items-center gap-2">
+              <div v-if="adminStore.isAuthenticated" class="flex items-center gap-2">
+                <button
+                  class="rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95"
+                  style="background: var(--stone-900); color: var(--cream-50); box-shadow: 0 4px 12px rgba(28,25,23,0.16);"
+                  @mouseover="$event.currentTarget.style.background='var(--stone-700)'"
+                  @mouseleave="$event.currentTarget.style.background='var(--stone-900)'"
+                  @click="router.push('/admin')">
+                  Admin Dashboard →
+                </button>
+              </div>
+              <div v-else-if="authStore.isAuthenticated" class="relative flex items-center gap-2">
                 <button
                   class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors"
                   style="background: var(--stone-900); color: var(--cream-50); border: 1px solid rgba(28,25,23,0.1);"
-                  title="Sign Out" @click="signOut">
-                  {{ authStore.user?.fullName?.charAt(0) }}
+                  title="Account" :aria-expanded="userMenuOpen" @click.stop="toggleUserMenu">
+                  {{ authStore.user?.fullName?.charAt(0) || authStore.user?.email?.charAt(0) || 'U' }}
                 </button>
+                <div v-if="userMenuOpen" v-click-outside="closeUserMenu"
+                  class="absolute right-0 top-full mt-3 w-[min(22rem,calc(100vw-2rem))] z-50 overflow-hidden"
+                  style="background: rgba(250,249,246,0.98); backdrop-filter: blur(20px); border: 1px solid rgba(28,25,23,0.08); border-radius: 18px; box-shadow: 0 8px 32px rgba(28,25,23,0.14);">
+                  <div class="px-4 py-3" style="border-bottom: 1px solid var(--cream-200);">
+                    <p class="text-sm font-bold truncate" style="color: var(--stone-900);">{{ authStore.user?.fullName }}</p>
+                    <p class="text-xs truncate" style="color: var(--stone-500);">{{ authStore.user?.email }}</p>
+                  </div>
+
+                  <div class="p-3 max-h-[380px] overflow-y-auto">
+                    <section>
+                      <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-[0.12em]" style="color: var(--stone-700);">Current orders</h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: var(--cream-200); color: var(--stone-600);">{{ currentOrders.length }}</span>
+                      </div>
+                      <p v-if="userOrdersLoading" class="py-3 text-xs" style="color: var(--stone-400);">Loading orders…</p>
+                      <p v-else-if="userOrdersError" class="py-3 text-xs" style="color: #DC2626;">{{ userOrdersError }}</p>
+                      <p v-else-if="currentOrders.length === 0" class="py-3 text-xs" style="color: var(--stone-400);">No current orders.</p>
+                      <div v-else class="space-y-2">
+                        <div v-for="order in currentOrders" :key="order.id" class="rounded-xl p-3" style="background: white; border: 1px solid var(--cream-200);">
+                          <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold truncate" style="color: var(--stone-800);">{{ order.id }}</span>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :style="getOrderStatusStyle(order.status)">{{ order.status }}</span>
+                          </div>
+                          <div class="flex items-center justify-between gap-2 mt-2 text-[11px]" style="color: var(--stone-500);">
+                            <span>{{ formatOrderDate(order.createdAt) }}</span>
+                            <span class="font-bold" style="color: var(--stone-800);">Rs. {{ order.totalAmount.toLocaleString() }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="mt-4 pt-4" style="border-top: 1px solid var(--cream-200);">
+                      <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-[0.12em]" style="color: var(--stone-700);">Order history</h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: var(--cream-200); color: var(--stone-600);">{{ orderHistory.length }}</span>
+                      </div>
+                      <p v-if="!userOrdersLoading && !orderHistory.length" class="py-3 text-xs" style="color: var(--stone-400);">No completed orders yet.</p>
+                      <div v-else class="space-y-2">
+                        <div v-for="order in orderHistory" :key="order.id" class="rounded-xl p-3" style="background: white; border: 1px solid var(--cream-200);">
+                          <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold truncate" style="color: var(--stone-800);">{{ order.id }}</span>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full" :style="getOrderStatusStyle(order.status)">{{ order.status }}</span>
+                          </div>
+                          <div class="flex items-center justify-between gap-2 mt-2 text-[11px]" style="color: var(--stone-500);">
+                            <span>{{ formatOrderDate(order.createdAt) }}</span>
+                            <span class="font-bold" style="color: var(--stone-800);">Rs. {{ order.totalAmount.toLocaleString() }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+
+                  <button class="w-full px-4 py-3 text-left text-xs font-bold transition-colors"
+                    style="color: #DC2626; border-top: 1px solid var(--cream-200);"
+                    @click="signOut(); closeUserMenu()">
+                    Sign Out
+                  </button>
+                </div>
               </div>
               <div v-else>
+                <button
+                  class="mr-2 rounded-full px-3.5 py-2 text-[11px] font-bold transition-all active:scale-95"
+                  style="background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.25); color: var(--amber-600);"
+                  @mouseover="$event.currentTarget.style.background='rgba(217,119,6,0.18)'"
+                  @mouseleave="$event.currentTarget.style.background='rgba(217,119,6,0.1)'"
+                  @click="router.push('/admin/login')">
+                  ✦ Admin Login
+                </button>
                 <button
                   class="rounded-full px-4 py-1.5 text-xs font-semibold transition-all active:scale-95"
                   style="background: var(--stone-900); color: var(--cream-50);"
@@ -229,8 +305,33 @@
           </div>
 
           <div class="mt-auto pt-6" style="border-top: 1px solid var(--cream-200);">
-            <div v-if="authStore.isAuthenticated" class="flex flex-col gap-3">
+            <div v-if="adminStore.isAuthenticated" class="flex flex-col gap-3">
+              <span class="text-sm font-semibold text-center" style="color: var(--stone-700);">Administrator access</span>
+              <button @click="router.push('/admin'); mobileMenuOpen = false" class="w-full py-3 rounded-xl text-sm font-bold transition-colors"
+                style="background: var(--stone-900); color: var(--cream-50);">Open Admin Dashboard →</button>
+            </div>
+            <div v-else-if="authStore.isAuthenticated" class="flex flex-col gap-3">
               <span class="text-sm font-semibold text-center" style="color: var(--stone-700);">{{ authStore.user?.fullName }}</span>
+              <div v-if="userOrdersLoading" class="text-xs text-center" style="color: var(--stone-400);">Loading orders…</div>
+              <div v-else-if="userOrdersError" class="text-xs text-center" style="color: #DC2626;">{{ userOrdersError }}</div>
+              <div v-else class="space-y-3 max-h-48 overflow-y-auto">
+                <div>
+                  <p class="mb-1 text-[10px] font-bold uppercase tracking-[0.12em]" style="color: var(--stone-500);">Current orders</p>
+                  <p v-if="!currentOrders.length" class="text-xs" style="color: var(--stone-400);">No current orders.</p>
+                  <div v-for="order in currentOrders" :key="order.id" class="flex items-center justify-between gap-2 py-1 text-xs" style="color: var(--stone-600);">
+                    <span class="truncate">{{ order.id }}</span>
+                    <span class="font-semibold" :style="getOrderStatusStyle(order.status)">{{ order.status }}</span>
+                  </div>
+                </div>
+                <div class="pt-2" style="border-top: 1px solid var(--cream-200);">
+                  <p class="mb-1 text-[10px] font-bold uppercase tracking-[0.12em]" style="color: var(--stone-500);">Order history</p>
+                  <p v-if="!orderHistory.length" class="text-xs" style="color: var(--stone-400);">No completed orders yet.</p>
+                  <div v-for="order in orderHistory" :key="order.id" class="flex items-center justify-between gap-2 py-1 text-xs" style="color: var(--stone-600);">
+                    <span class="truncate">{{ order.id }}</span>
+                    <span class="font-semibold" :style="getOrderStatusStyle(order.status)">{{ order.status }}</span>
+                  </div>
+                </div>
+              </div>
               <button @click="signOut(); mobileMenuOpen = false" class="w-full py-3 rounded-xl text-sm font-semibold transition-colors"
                 style="background: var(--cream-100); color: #DC2626; border: 1px solid rgba(220,38,38,0.15);">Sign Out</button>
             </div>
@@ -238,6 +339,10 @@
               <button @click="goToAuth('signin'); mobileMenuOpen = false" class="w-full py-3 rounded-xl text-sm font-semibold"
                 style="background: var(--stone-900); color: var(--cream-50);">Sign In</button>
             </div>
+            <button v-if="!adminStore.isAuthenticated" @click="router.push('/admin/login'); mobileMenuOpen = false" class="w-full py-3 rounded-xl text-sm font-bold transition-colors"
+              style="color: var(--amber-600); background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.25);">
+              ✦ Admin Login
+            </button>
           </div>
         </div>
       </header>
@@ -366,36 +471,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted, provide } from "vue";
+import { ref, computed, onMounted, provide } from "vue";
 import { useRouter } from "vue-router";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
+import { useAdminStore } from "@/store/adminStore";
 import { useToast } from 'vue-toastification';
+import { API_BASE_URL } from '@/config/api';
 
 // Router & Store
 const router = useRouter();
 const cartStore = useCartStore();
 const authStore = useAuthStore();
+const adminStore = useAdminStore();
 const toast = useToast()
 
 // Reactive Variables
 const products = ref([]);
 const mobileMenuOpen = ref(false);
+const userMenuOpen = ref(false);
+const userOrders = ref([]);
+const userOrdersLoading = ref(false);
+const userOrdersError = ref('');
+const currentOrders = computed(() => userOrders.value.filter(order => order.status !== 'Delivered'));
+const orderHistory = computed(() => userOrders.value.filter(order => order.status === 'Delivered'));
 
 // Search State
 const searchQuery = ref("");
 const searchResults = ref([]);
 const showSearchResults = ref(false);
-
-// Wishlist & Notifications (Premium Extra Space Elements)
-const notificationOpen = ref(false);
-const notifications = ref([
-  { id: 1, text: "🎉 Welcome to Luxe! Use coupon code LUXE20 for 20% off.", time: "2 hours ago" },
-  { id: 2, text: "📦 New premium furniture added to our collection.", time: "1 day ago" }
-]);
-
-// Newsletter Email
-const newsletterEmail = ref("");
 
 // Shop mega-menu groups
 const shopGroups = {
@@ -426,7 +530,7 @@ const mobileShopGroups = [
 // Functions
 const fetchProducts = async () => {
   try {
-    const response = await fetch("http://localhost:5001/api/products");
+    const response = await fetch(`${API_BASE_URL}/api/products`);
     if (!response.ok) throw new Error("Failed to fetch");
     const result = await response.json();
     products.value = result.products.sort((a, b) => b.id - a.id);
@@ -434,16 +538,6 @@ const fetchProducts = async () => {
     console.error(error);
   }
 };
-
-const navigateToCategory = (category) => {
-  router.push(`/${category.value}`);
-};
-
-const goToContact = (category) => {
-  if (category == "Contact Us") {
-    router.push("/contact")
-  }
-}
 
 const goToCart = () => {
   router.push("/cart");
@@ -455,8 +549,68 @@ const goToAuth = (mode) => {
   router.push({ path: '/auth', query: mode === 'signup' ? { mode: 'signup' } : undefined });
 };
 
+const fetchUserOrders = async () => {
+  if (!authStore.token) return;
+  userOrdersLoading.value = true;
+  userOrdersError.value = '';
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/orders/my`, {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    });
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      authStore.clearUser();
+      closeUserMenu();
+      toast.info('Your session has expired. Please sign in again.', { timeout: 2000, hideProgressBar: true });
+      return;
+    }
+    if (!response.ok) throw new Error(data.message || 'Unable to load your orders');
+    userOrders.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error loading user orders:', error);
+    userOrdersError.value = error.message || 'Unable to load your orders';
+  } finally {
+    userOrdersLoading.value = false;
+  }
+};
+
+const toggleUserMenu = async () => {
+  userMenuOpen.value = !userMenuOpen.value;
+  if (userMenuOpen.value) await fetchUserOrders();
+};
+
+const toggleMobileMenu = async () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value;
+  if (mobileMenuOpen.value && authStore.isAuthenticated) await fetchUserOrders();
+};
+
+const closeUserMenu = () => {
+  userMenuOpen.value = false;
+};
+
+const formatOrderDate = (dateString) => {
+  if (!dateString) return '-';
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(dateString));
+};
+
+const getOrderStatusStyle = (status) => {
+  const styles = {
+    Pending: 'background: rgba(245,158,11,0.12); color: #B45309;',
+    Paid: 'background: rgba(59,130,246,0.12); color: #2563EB;',
+    Confirmed: 'background: rgba(59,130,246,0.12); color: #2563EB;',
+    Shipped: 'background: rgba(139,92,246,0.12); color: #7C3AED;',
+    Delivered: 'background: rgba(34,197,94,0.12); color: #16A34A;'
+  };
+  return styles[status] || 'background: var(--cream-100); color: var(--stone-600);';
+};
+
 const signOut = () => {
   authStore.clearUser();
+  userMenuOpen.value = false;
+  userOrders.value = [];
+  userOrdersError.value = '';
   cartStore.item_details = [];
   cartStore.totalQuantity();
   cartStore.costCalculation();
@@ -517,30 +671,8 @@ const handleSelectSearchResult = (product) => {
   showSearchResults.value = false;
 };
 
-const clearSearch = () => {
-  searchQuery.value = "";
-  searchResults.value = [];
-};
-
 const closeSearch = () => {
   showSearchResults.value = false;
-};
-
-const closeNotifications = () => {
-  notificationOpen.value = false;
-};
-
-const clearNotifications = () => {
-  notifications.value = [];
-  toast.success("Notifications marked as read", { timeout: 1500, hideProgressBar: true });
-};
-
-// Newsletter Submit
-const handleNewsletterSubmit = () => {
-  if (newsletterEmail.value) {
-    toast.success(`Thank you for subscribing! Check ${newsletterEmail.value} for details.`, { timeout: 2500, hideProgressBar: true });
-    newsletterEmail.value = "";
-  }
 };
 
 // Custom click outside directive for Vue

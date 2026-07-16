@@ -21,10 +21,10 @@ const migrate = async () => {
         const queryText = `
           INSERT INTO products (
             id, title, description, specs, category, price, discount_percentage,
-            rating, stock, brand, sku, weight, warranty_information,
+            stock, brand, sku, weight, warranty_information,
             shipping_information, availability_status, thumbnail,
-            images, reviews, dimensions
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            images, dimensions
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
           ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             description = EXCLUDED.description,
@@ -32,7 +32,6 @@ const migrate = async () => {
             category = EXCLUDED.category,
             price = EXCLUDED.price,
             discount_percentage = EXCLUDED.discount_percentage,
-            rating = EXCLUDED.rating,
             stock = EXCLUDED.stock,
             brand = EXCLUDED.brand,
             sku = EXCLUDED.sku,
@@ -42,7 +41,6 @@ const migrate = async () => {
             availability_status = EXCLUDED.availability_status,
             thumbnail = EXCLUDED.thumbnail,
             images = EXCLUDED.images,
-            reviews = EXCLUDED.reviews,
             dimensions = EXCLUDED.dimensions;
         `;
 
@@ -54,7 +52,6 @@ const migrate = async () => {
           p.category,
           p.price,
           p.discountPercentage || 0,
-          p.rating || 0,
           p.stock || 0,
           p.brand || 'Generic',
           p.sku || '',
@@ -64,7 +61,6 @@ const migrate = async () => {
           p.availabilityStatus || 'In Stock',
           p.thumbnail || '',
           JSON.stringify(p.images || []),
-          JSON.stringify(p.reviews || []),
           JSON.stringify(p.dimensions || {})
         ];
 

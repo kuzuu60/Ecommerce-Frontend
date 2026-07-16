@@ -103,6 +103,7 @@
 import { computed, defineComponent, h, onMounted, ref } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useAdminStore } from '@/store/adminStore';
+import { API_BASE_URL } from '@/config/api';
 
 const toast = useToast();
 const adminStore = useAdminStore();
@@ -121,7 +122,7 @@ const fetchUsers = async () => {
   loading.value = true;
   try {
     const params = new URLSearchParams({ search: search.value, status: statusFilter.value });
-    const response = await fetch(`http://localhost:5001/api/admin/users?${params}`, { headers: authHeaders.value });
+    const response = await fetch(`${API_BASE_URL}/api/admin/users?${params}`, { headers: authHeaders.value });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Unable to load users');
     users.value = data;
@@ -143,7 +144,7 @@ const selectUser = async (user) => {
   customerOrders.value = [];
   detailLoading.value = true;
   try {
-    const response = await fetch(`http://localhost:5001/api/admin/users/${user.id}`, { headers: authHeaders.value });
+    const response = await fetch(`${API_BASE_URL}/api/admin/users/${user.id}`, { headers: authHeaders.value });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Unable to load customer');
     selectedUser.value = data.user;
@@ -160,7 +161,7 @@ const toggleStatus = async () => {
   if (!selectedUser.value) return;
   statusUpdating.value = true;
   try {
-    const response = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.value.id}/status`, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/users/${selectedUser.value.id}/status`, {
       method: 'PATCH',
       headers: { ...authHeaders.value, 'Content-Type': 'application/json' },
       body: JSON.stringify({ isActive: !selectedUser.value.isActive })

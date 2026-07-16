@@ -11,9 +11,7 @@ const toProductResponse = (product) => ({
   category: product.category,
   price: Number(product.price),
   discountPercentage: Number(product.discount_percentage),
-  rating: Number(product.rating),
   stock: product.stock,
-  brand: product.brand,
   sku: product.sku,
   weight: Number(product.weight),
   warrantyInformation: product.warranty_information,
@@ -21,7 +19,6 @@ const toProductResponse = (product) => ({
   availabilityStatus: product.availability_status,
   thumbnail: product.thumbnail,
   images: product.images,
-  reviews: product.reviews,
   dimensions: product.dimensions
 });
 
@@ -39,14 +36,11 @@ const answerProductQuestion = (product, question) => {
   if (/ship|delivery|arrive/.test(normalizedQuestion)) {
     return `${product.shipping_information || 'Shipping information is not listed for this product.'}`;
   }
-  if (/brand|made by|manufacturer/.test(normalizedQuestion)) {
-    return `${product.title} is a ${product.brand || 'Generic'} product in the ${product.category} category.`;
-  }
   if (/spec|feature|ram|storage|processor|chip|camera|display|screen|material/.test(normalizedQuestion)) {
     return `${product.title} features: ${specs}. ${product.description || ''}`.trim();
   }
 
-  return `${product.title} is a ${product.brand || 'Generic'} product in the ${product.category} category. ${product.description || 'No description is listed.'} Specifications: ${specs}. It is priced at Rs. ${price}.`;
+  return `${product.title} is a product in the ${product.category} category. ${product.description || 'No description is listed.'} Specifications: ${specs}. It is priced at Rs. ${price}.`;
 };
 
 exports.answerQuestion = async (req, res) => {
@@ -77,7 +71,6 @@ const buildRecommendationReason = (entry, budget) => {
   if (entry.matches.length > 0) reasons.push(`matches ${entry.matches.slice(0, 3).join(', ')}`);
   if (entry.product.category) reasons.push(`category: ${entry.product.category}`);
   if (budget !== null && entry.inBudget) reasons.push('within your budget');
-  if (Number(entry.product.rating) > 0) reasons.push(`rated ${Number(entry.product.rating).toFixed(1)}/5`);
   return reasons.join('; ') || 'closest match in the catalog';
 };
 

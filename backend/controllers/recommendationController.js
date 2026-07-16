@@ -6,9 +6,12 @@ const fs = require('fs');
 
 const getPythonCommand = () => {
     if (process.env.PYTHON_COMMAND) return process.env.PYTHON_COMMAND;
-    const condaPath = '/opt/anaconda3/envs/SPC/bin/python';
-    if (fs.existsSync(condaPath)) return condaPath;
-    return 'python3';
+    if (process.platform !== 'win32') {
+        const condaPath = '/opt/anaconda3/envs/SPC/bin/python';
+        if (fs.existsSync(condaPath)) return condaPath;
+        return 'python3';
+    }
+    return 'python';
 };
 
 const pythonCommand = getPythonCommand();
@@ -69,7 +72,7 @@ exports.getRecommendations = async (req, res) => {
 
         const result = await pool.query(`
             SELECT id, title, description, specs, category, brand, price, stock,
-                   discount_percentage AS "discountPercentage", rating, thumbnail
+                   discount_percentage AS "discountPercentage", thumbnail
             FROM products
             ORDER BY id
         `);

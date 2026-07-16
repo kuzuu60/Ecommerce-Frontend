@@ -28,6 +28,7 @@ import { useRouter } from 'vue-router';
 import { onMounted, inject } from 'vue';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
+import { API_BASE_URL } from '@/config/api';
 
 const router = useRouter();
 const cartStore = useCartStore();
@@ -42,7 +43,7 @@ onMounted(async () => {
       const pendingData = JSON.parse(pendingOrder);
       const items = Array.isArray(pendingData) ? pendingData : pendingData.items;
       const customerInfo = pendingData.customerInfo || {};
-      await fetch('http://localhost:5001/api/orders', {
+      await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
         body: JSON.stringify({ items, customerInfo, status: 'Paid' })

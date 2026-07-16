@@ -27,7 +27,7 @@
 
             <div class="flex flex-col gap-3 max-w-[82%]">
               <!-- Text Bubble -->
-              <div :class="msg.sender === 'user' ? 'user-bubble' : 'ai-bubble'">
+              <div :class="[msg.sender === 'user' ? 'user-bubble' : 'ai-bubble', i === 0 ? 'ai-intro-bubble' : '']">
                 <p class="whitespace-pre-line text-sm leading-relaxed">{{ msg.text }}</p>
                 <span v-if="msg.provider" class="provider-tag">via {{ msg.provider }}</span>
               </div>
@@ -122,6 +122,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
+import { API_BASE_URL } from '@/config/api';
 
 const router = useRouter();
 const route = useRoute();
@@ -176,12 +177,15 @@ const sendMessage = async () => {
   loading.value = true;
   await scrollToBottom();
   try {
-    const res = await fetch('http://localhost:5001/api/qa/recommend', {
+    const res = await fetch(`${API_BASE_URL}/api/qa/recommend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requirements: userText })
     });
-    if (!res.ok) throw new Error('Failed');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || 'The assistant could not complete that request.');
+    }
     const data = await res.json();
     messages.value.push({
       sender: 'ai',
@@ -189,8 +193,9 @@ const sendMessage = async () => {
       products: data.recommendedProducts || [],
       provider: data.provider
     });
-  } catch {
-    messages.value.push({ sender: 'ai', text: 'Sorry, I encountered an issue. Please check your connection and try again.' });
+  } catch (error) {
+    console.error('Assistant request failed:', error);
+    messages.value.push({ sender: 'ai', text: error.message || 'Sorry, I encountered an issue. Please check your connection and try again.' });
   } finally {
     loading.value = false;
     await scrollToBottom();
@@ -232,9 +237,10 @@ const sendMessage = async () => {
 }
 .ai-bubble {
   padding: 0.875rem 1.1rem; border-radius: 18px 18px 18px 4px;
-  background: var(--cream-100); color: var(--stone-800);
+  background: var(--cream-100); color: var(--stone-700);
   border: 1px solid var(--cream-200); max-width: 420px;
 }
+.ai-intro-bubble { color: var(--stone-600); }
 .provider-tag { display: block; font-size: 0.65rem; color: var(--stone-400); margin-top: 6px; text-align: right; }
 /* Product recs */
 .rec-card {
@@ -286,7 +292,7 @@ const sendMessage = async () => {
   outline: none; transition: border-color 0.2s;
 }
 .chat-input:focus { border-color: var(--stone-400); }
-.chat-input::placeholder { color: var(--stone-400); }
+.chat-input::placeholder { color: var(--stone-500); opacity: 0.62; }
 .chat-send {
   width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
   background: var(--stone-900); color: var(--cream-50);
@@ -296,4 +302,31 @@ const sendMessage = async () => {
 }
 .chat-send:hover:not(:disabled) { background: var(--stone-700); transform: scale(1.05); }
 .chat-send:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+/* Recommendation chips */
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.9rem 1.25rem 0.15rem;
+}
+.chip {
+  border: 1px solid var(--cream-200);
+  border-radius: 999px;
+  background: var(--cream-50);
+  color: var(--stone-600);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.55rem 0.85rem;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+}
+.chip:hover {
+  border-color: var(--cream-300);
+  background: var(--cream-100);
+  color: var(--stone-800);
+  transform: translateY(-1px);
+}
+.chips-enter-active, .chips-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.chips-enter-from, .chips-leave-to { opacity: 0; transform: translateY(5px); }
 </style>
