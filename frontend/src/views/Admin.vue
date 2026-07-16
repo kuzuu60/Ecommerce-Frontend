@@ -1,13 +1,13 @@
 <template>
-  <div class="min-h-screen pt-[120px] pb-20 px-6 max-w-7xl mx-auto">
-    <div class="mb-10">
+  <div class="min-h-screen lg:h-screen lg:overflow-hidden pt-[120px] lg:pt-8 pb-20 lg:pb-8 px-6 max-w-7xl mx-auto lg:flex lg:flex-col">
+    <div class="mb-10 lg:mb-6 shrink-0">
       <h1 class="text-4xl font-bold tracking-tight text-white font-display">Admin Dashboard</h1>
       <p class="mt-2 text-slate-400">Manage your storefront, customers, and orders.</p>
     </div>
 
-    <div class="grid lg:grid-cols-2 gap-12">
+    <div class="grid lg:grid-cols-2 gap-12 lg:flex-1 lg:min-h-0">
       <!-- Add Product Form -->
-      <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-800 p-8 rounded-3xl h-fit sticky top-32">
+      <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-800 p-8 rounded-3xl lg:h-full lg:overflow-y-auto self-start">
         <h2 class="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
           <span class="w-1 h-8 bg-blue-600 rounded-full"></span>
           {{ isEditing ? 'Edit Product' : 'Add New Product' }}
@@ -75,6 +75,20 @@
               placeholder="Product details..."></textarea>
           </div>
 
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-400">Specifications</label>
+            <input v-model="newProduct.specs" type="text"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. i5, 16GB RAM, 512GB SSD" />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-400">Warranty</label>
+            <input v-model="newProduct.warrantyInformation" type="text"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="e.g. 2 year warranty or No warranty" />
+          </div>
+
           <div class="space-y-3">
             <label class="text-sm font-medium text-slate-400">Product Image</label>
             <input
@@ -104,7 +118,7 @@
       </div>
 
       <!-- Product List -->
-      <div class="space-y-6">
+      <div class="space-y-6 lg:min-h-0 lg:h-full lg:overflow-y-auto lg:pr-3">
         <h2 class="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
           <span class="w-1 h-8 bg-purple-600 rounded-full"></span>
           Manage Inventory <span class="text-sm font-normal text-slate-500 ml-2">({{ products.length }} items)</span>
@@ -198,6 +212,8 @@ const newProduct = ref({
   title: '',
   price: '',
   description: '',
+  specs: '',
+  warrantyInformation: '',
   category: '',
   image: '',
   stock: '',
@@ -251,6 +267,8 @@ const editProduct = (product) => {
     title: product.title,
     price: product.price,
     description: product.description,
+    specs: product.specs || '',
+    warrantyInformation: product.warrantyInformation || '',
     category: product.category,
     image: product.thumbnail || product.images?.[0] || '',
     stock: product.stock,
@@ -275,7 +293,7 @@ const cancelEdit = () => {
     imageFile.value = null;
     imagePreview.value = '';
     selectedMainCategory.value = "";
-    newProduct.value = { title: '', price: '', description: '', category: '', image: '', stock: '', discountPercentage: 0 };
+    newProduct.value = { title: '', price: '', description: '', specs: '', warrantyInformation: '', category: '', image: '', stock: '', discountPercentage: 0 };
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) fileInput.value = '';
 };
@@ -295,6 +313,8 @@ const updateProduct = async () => {
     formData.append('title', newProduct.value.title);
     formData.append('price', newProduct.value.price);
     formData.append('description', newProduct.value.description);
+    formData.append('specs', newProduct.value.specs);
+    formData.append('warrantyInformation', newProduct.value.warrantyInformation);
     formData.append('category', newProduct.value.category);
     formData.append('stock', newProduct.value.stock);
     formData.append('discountPercentage', newProduct.value.discountPercentage || 0);
@@ -344,6 +364,8 @@ const addProduct = async () => {
     formData.append('title', newProduct.value.title);
     formData.append('price', newProduct.value.price);
     formData.append('description', newProduct.value.description);
+    formData.append('specs', newProduct.value.specs);
+    formData.append('warrantyInformation', newProduct.value.warrantyInformation);
     formData.append('category', newProduct.value.category);
     formData.append('stock', newProduct.value.stock || 100);
     formData.append('discountPercentage', newProduct.value.discountPercentage || 0);

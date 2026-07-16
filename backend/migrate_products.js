@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const pool = require('./models/db');
+const { buildProductSpecs } = require('./utils/productFeatures');
 
 const productsFilePath = path.join(__dirname, 'data', 'products.json');
 
@@ -19,14 +20,15 @@ const migrate = async () => {
       for (const p of products) {
         const queryText = `
           INSERT INTO products (
-            id, title, description, category, price, discount_percentage,
+            id, title, description, specs, category, price, discount_percentage,
             rating, stock, brand, sku, weight, warranty_information,
             shipping_information, availability_status, thumbnail,
             images, reviews, dimensions
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
           ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             description = EXCLUDED.description,
+            specs = EXCLUDED.specs,
             category = EXCLUDED.category,
             price = EXCLUDED.price,
             discount_percentage = EXCLUDED.discount_percentage,
@@ -48,6 +50,7 @@ const migrate = async () => {
           p.id,
           p.title,
           p.description || '',
+          buildProductSpecs(p),
           p.category,
           p.price,
           p.discountPercentage || 0,

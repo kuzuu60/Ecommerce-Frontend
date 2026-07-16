@@ -32,6 +32,9 @@
               Discover the quality and style of our {{ product.title }}. Perfect for your needs and designed to last.
               <!-- Placeholder description as generic product object might not have one, or we can use product.description if available -->
             </p>
+            <p class="mb-6 text-sm font-semibold text-gray-700">
+              Warranty: {{ product.warrantyInformation || 'No warranty' }}
+            </p>
           </div>
 
           <!-- Actions -->

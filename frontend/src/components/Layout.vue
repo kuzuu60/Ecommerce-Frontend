@@ -20,7 +20,7 @@
           </button>
 
           <button class="px-3 py-2 rounded-full text-slate-300 hover:bg-slate-800/50 hover:text-blue-400 transition-all duration-300 pointer-events-auto" @click="router.push('/assistant')">
-             AI Assistant
+             Product Recommendations
           </button>
           
           <div class="relative group h-[90px] flex items-center" v-for="category in categories" :key="category.id"

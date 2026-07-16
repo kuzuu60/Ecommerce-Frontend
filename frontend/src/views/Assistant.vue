@@ -9,8 +9,8 @@
           </svg>
         </div>
         <div>
-          <h2 class="text-xl font-bold text-slate-100">AI Recommendation Assistant</h2>
-          <p class="text-xs text-slate-400">Describe your needs and let the AI match you with products.</p>
+          <h2 class="text-xl font-bold text-slate-100">Product Recommendation Assistant</h2>
+          <p class="text-xs text-slate-400">Describe your needs and find matching products from our catalog.</p>
         </div>
       </div>
 
@@ -19,7 +19,7 @@
         <div v-for="(msg, index) in messages" :key="index" :class="['flex gap-4 max-w-[85%] animate-fade-in', msg.sender === 'user' ? 'ml-auto flex-row-reverse' : '']">
           <!-- Avatar -->
           <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0', msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700']">
-            {{ msg.sender === 'user' ? 'U' : 'AI' }}
+            {{ msg.sender === 'user' ? 'U' : 'CB' }}
           </div>
 
           <!-- Bubble Content -->
@@ -46,6 +46,7 @@
                     {{ product.title }}
                   </h4>
                   <p class="text-xs text-slate-400 mb-3 font-semibold">{{ product.category }}</p>
+                  <p class="text-[10px] text-slate-500 mb-3">Warranty: {{ product.warrantyInformation || 'No warranty' }}</p>
 
                   <div class="mt-auto flex items-center justify-between">
                     <div>
@@ -75,7 +76,7 @@
 
         <!-- Typing Loading -->
         <div v-if="loading" class="flex gap-4 max-w-[85%]">
-          <div class="w-9 h-9 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-sm font-bold">AI</div>
+          <div class="w-9 h-9 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-sm font-bold">CB</div>
           <div class="px-5 py-3.5 bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none flex items-center gap-1.5">
             <div class="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-75"></div>
             <div class="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-150"></div>
@@ -124,7 +125,7 @@ const authStore = useAuthStore();
 const messages = ref([
   {
     sender: 'ai',
-    text: "Hello! I am your AI Product Assistant. Tell me what you're looking for, or list your requirements (e.g., your budget, preferences, or categories), and I will find the best recommendations from our store."
+    text: "Tell me what you're looking for, including your budget, preferences, or category, and I will find the closest matches from our store."
   }
 ]);
 
@@ -188,7 +189,7 @@ const sendMessage = async () => {
     });
 
     if (!res.ok) {
-      throw new Error('AI service failed to respond.');
+      throw new Error('Recommendation service failed to respond.');
     }
 
     const data = await res.json();
@@ -199,10 +200,10 @@ const sendMessage = async () => {
       provider: data.provider
     });
   } catch (err) {
-    console.error('AI Recommendation Error:', err);
+    console.error('Recommendation Error:', err);
     messages.value.push({
       sender: 'ai',
-      text: 'Sorry, I encountered an issue processing your request. Please check your backend connection or API settings.'
+      text: 'Sorry, I encountered an issue processing your request. Please check your backend connection.'
     });
   } finally {
     loading.value = false;

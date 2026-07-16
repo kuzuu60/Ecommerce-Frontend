@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    specs TEXT,
     category VARCHAR(100) NOT NULL,
     price NUMERIC(12,2) NOT NULL,
     discount_percentage NUMERIC(5,2) DEFAULT 0,
@@ -52,3 +53,5 @@ CREATE TABLE IF NOT EXISTS products (
     dimensions JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS specs TEXT;
