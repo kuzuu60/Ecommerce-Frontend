@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
 const pool = require('../models/db');
-require('dotenv').config();
 
 exports.login = async (req, res) => {
     const { username, password } = req.body;

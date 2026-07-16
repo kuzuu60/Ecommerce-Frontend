@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
 
 const pool = new Pool({
     host: process.env.DB_HOST,

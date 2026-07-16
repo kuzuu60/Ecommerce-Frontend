@@ -84,7 +84,7 @@
             >
               {{ qaLoading ? 'Answering...' : 'Ask the AI' }}
             </button>
-            <span v-if="!qaLoading" class="text-sm text-slate-400">Powered by Gemini</span>
+            <span v-if="!qaLoading" class="text-sm text-slate-400">Powered by {{ qaProvider }}</span>
           </div>
 
           <div v-if="qaError" class="mt-4 text-sm text-red-400">{{ qaError }}</div>
@@ -146,6 +146,7 @@ const getDiscountedPrice = (product) => {
 
 const qaQuestion = ref('');
 const qaAnswer = ref('');
+const qaProvider = ref('AI');
 const qaLoading = ref(false);
 const qaError = ref(null);
 
@@ -155,6 +156,7 @@ const askQuestion = async () => {
   qaLoading.value = true;
   qaError.value = null;
   qaAnswer.value = '';
+  qaProvider.value = 'AI';
 
   try {
     const response = await fetch('http://localhost:5000/api/qa', {
@@ -168,14 +170,14 @@ const askQuestion = async () => {
       })
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      const data = await response.json();
       qaError.value = data.message || 'Unable to get an answer';
       return;
     }
 
-    const data = await response.json();
     qaAnswer.value = data.answer || 'No answer returned.';
+    qaProvider.value = data.provider || 'AI';
   } catch (err) {
     console.error('QA error:', err);
     qaError.value = 'AI request failed. Please try again.';
