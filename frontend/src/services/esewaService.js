@@ -1,34 +1,51 @@
-import CryptoJS from "crypto-js";
+import { API_BASE_URL, ESEWA_MODE } from '@/config/api';
 
-export const initiateEsewaPayment = (amount, productId) => {
+export const initiateEsewaPayment = async (amount, productId) => {
+    const transaction_uuid = productId + "-" + Date.now();
+
+    if (ESEWA_MODE !== 'live') {
+        const query = new URLSearchParams({
+            txnRefId: transaction_uuid,
+            productId: String(productId),
+            amount: String(amount),
+        });
+        const response = await fetch(`${API_BASE_URL}/api/esewa/mobile/transaction?${query}`, {
+            headers: {
+                merchantid: 'demo-merchant',
+                merchantsecret: 'demo-secret',
+            },
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || data?.[0]?.code !== '00') {
+            throw new Error(data?.[0]?.message?.successMessage || 'Demo payment failed');
+        }
+        return { mode: 'mock', transaction_uuid };
+    }
+
     const path = "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
-    const product_code = "EPAYTEST";
-    const secret_key = "8gBm/:&EnhH.1/q";
-    const transaction_uuid = productId + "_" + Date.now();
-    const tax_amount = "0";
-    const product_service_charge = "0";
-    const product_delivery_charge = "0";
-
-    // Signature calculation: "total_amount,transaction_uuid,product_code"
-    const total_amount = amount.toString(); // Ensure string
-    const signatureString = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${product_code}`;
-
-    const hash = CryptoJS.HmacSHA256(signatureString, secret_key);
-    const signature = CryptoJS.enc.Base64.stringify(hash);
+    const signatureResponse = await fetch(`${API_BASE_URL}/api/payment/esewa-signature`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, productId }),
+    });
+    const signatureData = await signatureResponse.json().catch(() => null);
+    if (!signatureResponse.ok) {
+        throw new Error(signatureData?.message || 'Unable to initialize eSewa payment');
+    }
 
     const origin = window.location.origin;
     const params = {
-        amount: total_amount,
-        tax_amount: tax_amount,
-        total_amount: total_amount,
-        transaction_uuid: transaction_uuid,
-        product_code: product_code,
-        product_service_charge: product_service_charge,
-        product_delivery_charge: product_delivery_charge,
+        amount: String(amount),
+        tax_amount: "0",
+        total_amount: String(amount),
+        transaction_uuid: signatureData.transaction_uuid,
+        product_code: signatureData.product_code,
+        product_service_charge: "0",
+        product_delivery_charge: "0",
         success_url: `${origin}/success`,
         failure_url: `${origin}/failure`,
-        signed_field_names: "total_amount,transaction_uuid,product_code",
-        signature: signature,
+        signed_field_names: signatureData.signed_field_names,
+        signature: signatureData.signature,
     };
 
     const form = document.createElement("form");

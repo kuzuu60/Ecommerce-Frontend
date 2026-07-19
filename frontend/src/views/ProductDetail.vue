@@ -77,7 +77,7 @@
           <!-- Q&A Section -->
           <div class="qa-box">
             <h3 class="qa-title">Ask about this product</h3>
-            <textarea v-model="qaQuestion" rows="3" placeholder="Ask anything about specs, compatibility, usage…" class="qa-textarea"></textarea>
+            <textarea v-model="qaQuestion" rows="3" placeholder="Ask about price, stock, shipping, warranty, or specifications…" class="qa-textarea"></textarea>
             <div class="flex items-center gap-3 mt-3">
               <button @click="askQuestion" :disabled="qaLoading || !qaQuestion.trim()" class="qa-btn">
                 {{ qaLoading ? 'Checking…' : 'Ask AI' }}
@@ -109,11 +109,13 @@
               <p class="sim-score">{{ Math.round(rec.similarityScore * 100) }}% match</p>
               <h4 class="sim-name">{{ rec.name }}</h4>
               <p class="sim-reason">{{ rec.reason }}</p>
-              <p class="sim-price">Rs. {{ Number(rec.price).toLocaleString() }}</p>
+              <p class="sim-price">Rs. {{ getDiscountedPrice(rec).toLocaleString() }}</p>
+              <p v-if="rec.discountPercentage > 0" class="sim-original-price">Rs. {{ Number(rec.price).toLocaleString() }}</p>
             </div>
           </article>
         </div>
       </section>
+
     </div>
 
     <!-- Not Found -->
@@ -167,12 +169,18 @@ const qaProvider = ref('');
 const qaLoading = ref(false);
 const qaError = ref(null);
 const similarProducts = ref([]);
+let recommendationsRequestId = 0;
 const fetchRecommendations = async (productId) => {
+  const requestId = ++recommendationsRequestId;
+  similarProducts.value = [];
   try {
-    const res = await fetch(`${API_BASE_URL}/api/products/${productId}/recommendations?topN=4`);
-    if (!res.ok) return;
-    similarProducts.value = await res.json();
-  } catch { similarProducts.value = []; }
+    const res = await fetch(`${API_BASE_URL}/api/products/${productId}/recommendations`);
+    if (!res.ok) throw new Error('Failed to load similar products');
+    const recommendations = await res.json();
+    if (requestId === recommendationsRequestId) similarProducts.value = recommendations;
+  } catch {
+    if (requestId === recommendationsRequestId) similarProducts.value = [];
+  }
 };
 const askQuestion = async () => {
   if (!qaQuestion.value.trim() || !product.value) return;
@@ -190,7 +198,13 @@ const askQuestion = async () => {
   } catch { qaError.value = 'Failed to get answer. Please try again.'; }
   finally { qaLoading.value = false; }
 };
-watch(product, (p) => { if (p) fetchRecommendations(p.id); }, { immediate: true });
+watch(product, (p) => {
+  if (p) fetchRecommendations(p.id);
+  else {
+    recommendationsRequestId += 1;
+    similarProducts.value = [];
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>
@@ -363,4 +377,5 @@ watch(product, (p) => { if (p) fetchRecommendations(p.id); }, { immediate: true 
 .sim-name { font-size: 0.85rem; font-weight: 600; color: var(--stone-800); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
 .sim-reason { font-size: 0.72rem; color: var(--stone-400); line-height: 1.5; margin-bottom: 8px; }
 .sim-price { font-size: 1rem; font-weight: 700; color: var(--stone-900); }
+.sim-original-price { font-size: 0.7rem; color: var(--stone-400); text-decoration: line-through; }
 </style>

@@ -13,6 +13,10 @@ STOP_WORDS = {
     'product', 'products', 'design', 'modern', 'quality',
 }
 
+MIN_SIMILARITY = 0.1
+PRICE_RANGE_TOLERANCE = 0.5
+PRICE_FACTOR_WEIGHT = 0.25
+
 
 def _tokens(value):
     return {
@@ -35,7 +39,7 @@ class ContentBasedRecommender:
         self.features = self.extractor.fit_transform(self.products)
         return self
 
-    def _explain(self, target, recommendation):
+    def _explain(self, target, recommendation, price_similarity):
         reasons = []
         if target.category == recommendation.category and target.category:
             reasons.append(f'same category: {target.category}')
@@ -45,9 +49,11 @@ class ContentBasedRecommender:
         shared = sorted(_tokens(target.feature_text) & _tokens(recommendation.feature_text))
         if shared:
             reasons.append(f'shared features: {", ".join(shared[:4])}')
+        if price_similarity >= 0.67:
+            reasons.append('similar price range')
         return '; '.join(reasons) or 'similar product attributes'
 
-    def recommend(self, product_id, top_n=5):
+    def recommend(self, product_id, top_n=None):
         if self.products is None or self.features is None:
             return []
 
@@ -61,17 +67,31 @@ class ContentBasedRecommender:
             return []
 
         target_index = int(matches[0])
-        scores = cosine_similarity(self.features[target_index], self.features).ravel()
-        scores[target_index] = -1
         target = self.products.iloc[target_index]
-        category_bonus = (self.products['category'] == target['category']).astype(float).to_numpy() * 0.15
-        department_bonus = (self.products['category_group'] == target['category_group']).astype(float).to_numpy() * 0.05
-        ranking_scores = scores + category_bonus + department_bonus
-        ranking_scores[target_index] = -1
+        text_scores = cosine_similarity(self.features[target_index], self.features).ravel()
+        target_price = float(target['sale_price_numeric'])
+        candidate_prices = self.products['sale_price_numeric'].to_numpy(dtype='float64')
+        if target_price > 0:
+            price_similarity = np.minimum(target_price, candidate_prices) / np.maximum(target_price, candidate_prices)
+            price_similarity = np.nan_to_num(price_similarity, nan=0.0, posinf=0.0, neginf=0.0)
+            price_min = target_price * (1 - PRICE_RANGE_TOLERANCE)
+            price_max = target_price * (1 + PRICE_RANGE_TOLERANCE)
+            in_price_range = (candidate_prices >= price_min) & (candidate_prices <= price_max)
+        else:
+            price_similarity = np.ones(len(candidate_prices))
+            in_price_range = np.ones(len(candidate_prices), dtype=bool)
+
+        scores = (text_scores * (1 - PRICE_FACTOR_WEIGHT)) + (price_similarity * PRICE_FACTOR_WEIGHT)
+        scores[target_index] = -1
         candidate_indexes = [
-            index for index in np.argsort(-ranking_scores)
-            if index != target_index and self.products.iloc[index]['stock_numeric'] > 0
-        ][:max(1, min(int(top_n), 20))]
+            index for index in np.argsort(-scores)
+            if index != target_index
+            and self.products.iloc[index]['stock_numeric'] > 0
+            and in_price_range[index]
+            and scores[index] >= MIN_SIMILARITY
+        ]
+        if top_n is not None:
+            candidate_indexes = candidate_indexes[:min(max(int(top_n), 1), 20)]
 
         recommendations = []
         for index in candidate_indexes:
@@ -83,8 +103,9 @@ class ContentBasedRecommender:
                 'category': product['category_display'],
                 'brand': product['brand_display'],
                 'price': float(product['price_numeric']),
+                'salePrice': float(product['sale_price_numeric']),
                 'similarityScore': round(score, 4),
-                'reason': self._explain(target, product),
+                'reason': self._explain(target, product, float(price_similarity[index])),
                 'stock': int(product['stock_numeric']),
                 'discountPercentage': float(product.get('discountPercentage', 0) or 0),
                 'description': product['description'],

@@ -5,16 +5,21 @@ const stopWords = new Set([
     'maximum', 'max', 'within', 'budget', 'rs', 'npr', 'inr', 'price'
 ]);
 
-const categoryAliases = new Map([
-    ['laptop', 'laptops'], ['notebook', 'laptops'], ['computer', 'laptops'], ['pc', 'laptops'], ['macbook', 'laptops'],
-    ['phone', 'smartphones'], ['mobile', 'smartphones'], ['smartphone', 'smartphones'], ['iphone', 'smartphones'], ['android', 'smartphones'],
-    ['tablet', 'tablets'], ['ipad', 'tablets'],
-    ['accessory', 'mobile-accessories'], ['accessories', 'mobile-accessories'], ['charger', 'mobile-accessories'], ['case', 'mobile-accessories'],
-    ['furniture', 'furniture'], ['sofa', 'furniture'], ['bed', 'furniture'], ['chair', 'furniture'], ['desk', 'furniture'],
-    ['decor', 'home-decoration'], ['decoration', 'home-decoration'], ['lamp', 'home-decoration'], ['plant', 'home-decoration'],
-    ['kitchen', 'kitchen-accessories'], ['cookware', 'kitchen-accessories'], ['spatula', 'kitchen-accessories'],
-    ['sport', 'sports-accessories'], ['sports', 'sports-accessories'], ['fitness', 'sports-accessories'], ['gym', 'sports-accessories'],
-    ['sunglasses', 'sunglasses'], ['glasses', 'sunglasses']
+const queryAliases = new Map([
+    ['phone', ['smartphone', 'mobile']],
+    ['mobile', ['smartphone', 'phone']],
+    ['notebook', ['laptop']],
+    ['computer', ['laptop', 'pc']],
+    ['study', ['student', 'college', 'university', 'education']],
+    ['college', ['student', 'university', 'education']],
+    ['university', ['student', 'college', 'education']],
+    ['work', ['office', 'business', 'productivity']],
+    ['office', ['business', 'productivity']],
+    ['gaming', ['game', 'performance']],
+    ['camera', ['photography', 'photo']],
+    ['photos', ['photography', 'camera']],
+    ['cheap', ['affordable', 'budget']],
+    ['durable', ['reliable', 'quality']]
 ]);
 
 const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -23,9 +28,15 @@ const tokenize = (value) => normalize(value)
     .split(/\s+/)
     .filter((token) => token.length > 1 && !stopWords.has(token));
 
+const expandQueryTokens = (value) => {
+    const tokens = tokenize(value);
+    return [...new Set(tokens.flatMap((token) => [token, ...(queryAliases.get(token) || [])]))];
+};
+
 const parseBudget = (requirements) => {
     const text = String(requirements || '').replace(/,/g, '');
-    const match = text.match(/(?:under|below|less than|upto|up to|maximum|max|within|budget)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh)?/i);
+    const matches = [...text.matchAll(/(?:under|below|less than|upto|up to|maximum|max|within|budget)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh)?/gi)];
+    const match = matches.at(-1);
     if (!match) return null;
 
     const amount = Number(match[1]);
@@ -36,14 +47,13 @@ const parseBudget = (requirements) => {
     return amount;
 };
 
-const getCategories = (tokens) => [...new Set(tokens.map((token) => categoryAliases.get(token)).filter(Boolean))];
-
 const buildDocument = (product) => [
     product.title,
     product.category,
     product.brand,
     product.description,
-    product.specs
+    product.specs,
+    product.tags
 ].filter(Boolean).join(' ');
 
 const buildIdf = (products) => {
@@ -76,9 +86,14 @@ const cosineSimilarity = (queryTokens, documentTokens, getIdf) => {
     return dotProduct / (Math.sqrt(queryMagnitude) * Math.sqrt(documentMagnitude));
 };
 
+const getEffectivePrice = (product) => {
+    const price = Number(product.price) || 0;
+    const discount = Number(product.discount_percentage ?? product.discountPercentage ?? 0) || 0;
+    return discount > 0 ? Number((price * (1 - discount / 100)).toFixed(2)) : price;
+};
+
 const recommendProducts = (products, requirements) => {
-    const queryTokens = tokenize(requirements);
-    const queryCategories = getCategories(queryTokens);
+    const queryTokens = expandQueryTokens(requirements);
     const budget = parseBudget(requirements);
     const getIdf = buildIdf(products);
 
@@ -86,18 +101,14 @@ const recommendProducts = (products, requirements) => {
         const documentTokens = tokenize(buildDocument(product));
         const documentTokenSet = new Set(documentTokens);
         const similarity = cosineSimilarity(queryTokens, documentTokens, getIdf);
-        const categoryMatch = queryCategories.includes(normalize(product.category)) ? 1 : 0;
-        const brandMatch = product.brand && normalize(requirements).includes(normalize(product.brand)) ? 1 : 0;
-        const inBudget = budget === null || Number(product.price) <= budget;
-        const budgetScore = budget === null ? 0 : inBudget ? 0.2 : -0.35;
-        const stockScore = Number(product.stock) > 0 ? 0.03 : -0.2;
-        const score = similarity * 0.67 + categoryMatch * 0.2 + brandMatch * 0.1 + budgetScore + stockScore;
+        const effectivePrice = getEffectivePrice(product);
+        const inBudget = budget === null || effectivePrice <= budget;
         const matches = [...new Set(queryTokens.filter((token) => documentTokenSet.has(token)))].slice(0, 4);
 
-        return { product, score, matches, inBudget };
+        return { product, score: similarity, matches, inBudget, effectivePrice };
     }).sort((left, right) => {
         if (right.score !== left.score) return right.score - left.score;
-        return Number(left.product.price) - Number(right.product.price);
+        return left.effectivePrice - right.effectivePrice;
     });
 };
 

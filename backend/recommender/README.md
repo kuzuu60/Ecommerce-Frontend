@@ -20,7 +20,7 @@ The Express API starts the model on demand. Configure `PYTHON_COMMAND` in `.env`
 ## API
 
 ```text
-GET /api/products/:productId/recommendations?topN=5
+GET /api/products/:productId/recommendations
 ```
 
-The response is an array containing `productId`, `name`, `similarityScore`, and an explainable `reason`, along with product category, brand, price, and thumbnail data.
+The response includes only in-stock products with cosine similarity of at least `0.1` and a selling price within ±50% of the selected product. Text similarity contributes 75% of the score and price similarity contributes 25%. It is sorted by the combined score and contains `productId`, `name`, `similarityScore`, `salePrice`, and an explainable `reason`, along with product category, brand, price, and thumbnail data. An optional `topN` query parameter can further limit the threshold-qualified results.

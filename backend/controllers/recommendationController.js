@@ -63,8 +63,8 @@ const runPythonRecommender = (payload) => new Promise((resolve, reject) => {
 exports.getRecommendations = async (req, res) => {
     try {
         const productId = Number.parseInt(req.params.id, 10);
-        const requestedTopN = Number.parseInt(req.query.topN || req.query.limit || '5', 10);
-        const topN = Number.isFinite(requestedTopN) ? Math.min(Math.max(requestedTopN, 1), 20) : 5;
+        const requestedTopN = Number.parseInt(req.query.topN || req.query.limit, 10);
+        const topN = Number.isFinite(requestedTopN) ? Math.min(Math.max(requestedTopN, 1), 20) : null;
 
         if (!Number.isInteger(productId)) {
             return res.status(400).json({ message: 'Product id must be a number' });

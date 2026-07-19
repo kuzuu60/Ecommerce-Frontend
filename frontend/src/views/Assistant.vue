@@ -11,7 +11,7 @@
         </div>
         <div>
           <h1 style="font-family: var(--font-display); font-size: 1.4rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.01em;">Product Assistant</h1>
-          <p style="font-size: 0.75rem; color: var(--stone-400); font-weight: 500;">Describe your needs and we'll find matching products from our catalog</p>
+          <p style="font-size: 0.75rem; color: var(--stone-400); font-weight: 500;">Tell me what matters to you and I’ll help you choose from our catalog</p>
         </div>
       </div>
 
@@ -32,7 +32,7 @@
                 <span v-if="msg.provider" class="provider-tag">via {{ msg.provider }}</span>
               </div>
 
-              <!-- Product Cards -->
+              <!-- Strongest Product Matches -->
               <div v-if="msg.products && msg.products.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-[500px]">
                 <div v-for="product in msg.products" :key="product.id"
                   class="rec-card group" @click="goToProduct(product)">
@@ -43,6 +43,7 @@
                   <div class="rec-body">
                     <p class="rec-category">{{ product.category }}</p>
                     <h4 class="rec-name">{{ product.title }}</h4>
+                    <p v-if="product.matchReason" class="rec-reason">{{ product.matchReason }}</p>
                     <div class="rec-foot">
                       <div>
                         <p class="rec-price">Rs. {{ getDiscountedPrice(product).toLocaleString() }}</p>
@@ -129,7 +130,7 @@ const route = useRoute();
 const toast = useToast();
 const cartStore = useCartStore();
 const authStore = useAuthStore();
-const messages = ref([{ sender: 'ai', text: "Tell me what you're looking for — budget, category, or specific needs — and I'll find the closest matches from our catalog." }]);
+const messages = ref([{ sender: 'ai', text: "Tell me what you need, how you’ll use it, and any budget or preferences. I’ll compare the catalog and explain the strongest matches." }]);
 const inputQuery = ref('');
 const loading = ref(false);
 const isFocused = ref(false);
@@ -180,7 +181,10 @@ const sendMessage = async () => {
     const res = await fetch(`${API_BASE_URL}/api/qa/recommend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requirements: userText })
+      body: JSON.stringify({
+        requirements: userText,
+        conversation: messages.value.slice(-7)
+      })
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
@@ -190,7 +194,7 @@ const sendMessage = async () => {
     messages.value.push({
       sender: 'ai',
       text: data.answer || "I checked our catalog but couldn't find exact matches.",
-      products: data.recommendedProducts || [],
+      products: (data.recommendedProducts || []).slice(0, 4),
       provider: data.provider
     });
   } catch (error) {
@@ -264,6 +268,7 @@ const sendMessage = async () => {
 .rec-body { padding: 0.875rem; flex: 1; display: flex; flex-direction: column; }
 .rec-category { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--amber-600); margin-bottom: 3px; }
 .rec-name { font-size: 0.8rem; font-weight: 600; color: var(--stone-800); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: auto; padding-bottom: 0.75rem; }
+.rec-reason { font-size: 0.68rem; line-height: 1.35; color: var(--stone-500); margin: -0.35rem 0 0.75rem; }
 .rec-foot { display: flex; align-items: center; justify-content: space-between; }
 .rec-price { font-size: 0.9rem; font-weight: 700; color: var(--stone-900); }
 .rec-original { font-size: 0.68rem; color: var(--stone-400); text-decoration: line-through; }

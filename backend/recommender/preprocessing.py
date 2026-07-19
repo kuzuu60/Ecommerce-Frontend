@@ -53,6 +53,11 @@ def prepare_products(products):
     frame['tags'] = frame.apply(lambda row: clean_text(_value(row, 'tags', 'keywords')), axis=1)
     frame['price_numeric'] = pd.to_numeric(frame.get('price'), errors='coerce')
     frame['price_numeric'] = frame['price_numeric'].fillna(frame['price_numeric'].median()).fillna(0)
+    frame['discount_numeric'] = pd.to_numeric(
+        frame.apply(lambda row: _value(row, 'discountPercentage', 'discount_percentage'), axis=1),
+        errors='coerce',
+    ).fillna(0).clip(lower=0, upper=100)
+    frame['sale_price_numeric'] = (frame['price_numeric'] * (1 - frame['discount_numeric'] / 100)).round(2)
     frame['stock_numeric'] = pd.to_numeric(frame.get('stock'), errors='coerce').fillna(0)
     frame['category_group'] = frame['category'].map(category_group)
     frame['feature_text'] = frame.apply(

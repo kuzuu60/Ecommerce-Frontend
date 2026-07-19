@@ -439,18 +439,18 @@
       </div>
 
       <!-- ── FOOTER (Minimalist Cream Bar) ──────────────────────── -->
-      <footer class="py-8 px-6 lg:px-12 mt-auto" style="background: var(--cream-100); border-top: 1px solid var(--cream-200);">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div class="flex items-center gap-3">
+      <footer class="mt-auto px-6 py-8 sm:px-8 lg:px-12" style="background: var(--cream-100); border-top: 1px solid var(--cream-200);">
+        <div class="max-w-7xl mx-auto grid w-full grid-cols-1 items-center gap-5 sm:grid-cols-3 sm:gap-4">
+          <div class="flex items-center justify-center gap-3 sm:justify-self-start">
             <img src="/assets/final5.png" alt="Luxe Logo" class="h-5 object-contain" style="opacity: 0.5;" />
             <span class="text-xs" style="color: var(--stone-400); font-weight: 500;">© 2026 Luxe Commerce</span>
           </div>
-          <div class="flex items-center gap-6 text-xs font-semibold tracking-wider uppercase" style="color: var(--stone-400);">
+          <div class="flex items-center justify-center gap-6 text-xs font-semibold tracking-wider uppercase sm:justify-self-center" style="color: var(--stone-400);">
             <button @click="router.push('/contact')" class="transition-colors hover-stone">Support</button>
             <button class="transition-colors hover-stone">Privacy</button>
             <button class="transition-colors hover-stone">Terms</button>
           </div>
-          <div class="flex items-center gap-4" style="color: var(--stone-400);">
+          <div class="flex items-center justify-center gap-4 sm:justify-self-end" style="color: var(--stone-400);">
             <a href="#" class="transition-colors" title="Twitter"
               @mouseover="$event.currentTarget.style.color='var(--stone-700)'"
               @mouseleave="$event.currentTarget.style.color='var(--stone-400)'">

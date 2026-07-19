@@ -119,17 +119,45 @@
 
       <!-- Product List -->
       <div class="space-y-6 lg:min-h-0 lg:h-full lg:overflow-y-auto lg:pr-3">
-        <h2 class="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
-          <span class="w-1 h-8 bg-purple-600 rounded-full"></span>
-          Manage Inventory <span class="text-sm font-normal text-slate-500 ml-2">({{ products.length }} items)</span>
-        </h2>
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="text-2xl font-semibold text-white flex items-center gap-3">
+            <span class="w-1 h-8 bg-purple-600 rounded-full"></span>
+            Manage Inventory
+            <span class="text-sm font-normal text-slate-500 ml-2">({{ filteredInventoryProducts.length }}{{ inventorySearch ? ` of ${products.length}` : '' }} items)</span>
+          </h2>
+          <div class="relative w-full sm:w-72">
+            <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
+            </svg>
+            <input
+              v-model="inventorySearch"
+              type="search"
+              placeholder="Search inventory to edit..."
+              aria-label="Search inventory"
+              class="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-10 text-sm text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-purple-500"
+            />
+            <button
+              v-if="inventorySearch"
+              type="button"
+              @click="inventorySearch = ''"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-white"
+              aria-label="Clear inventory search"
+            >
+              <span class="text-lg leading-none">&times;</span>
+            </button>
+          </div>
+        </div>
 
         <div v-if="products.length === 0" class="text-center py-20 text-slate-500 bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
             No products found. Add one to get started!
         </div>
 
+        <div v-else-if="filteredInventoryProducts.length === 0" class="text-center py-20 text-slate-500 bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
+            No inventory products match “{{ inventorySearch }}”.
+        </div>
+
         <div v-else class="space-y-4">
-          <div v-for="product in products" :key="product.id" 
+          <div v-for="product in filteredInventoryProducts" :key="product.id"
             class="bg-slate-900/30 border border-slate-800/50 p-4 rounded-2xl flex items-center gap-5 hover:bg-slate-800/50 transition-colors group">
             
             <div class="w-20 h-20 bg-white p-2 rounded-xl shrink-0 overflow-hidden">
@@ -196,6 +224,20 @@ import { API_BASE_URL } from '@/config/api';
 const toast = useToast();
 const products = ref([]);
 const loading = ref(false);
+const inventorySearch = ref('');
+
+const filteredInventoryProducts = computed(() => {
+  const query = inventorySearch.value.trim().toLowerCase();
+  if (!query) return products.value;
+
+  return products.value.filter((product) => [
+    product.title,
+    product.category,
+    product.brand,
+    product.sku,
+    product.id
+  ].some((value) => String(value ?? '').toLowerCase().includes(query)));
+});
 
 const fetchProducts = async () => {
   try {

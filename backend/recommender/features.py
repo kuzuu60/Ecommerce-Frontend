@@ -17,7 +17,8 @@ class ProductFeatureExtractor:
 
     def fit_transform(self, frame):
         text_features = self.vectorizer.fit_transform(frame['feature_text'])
-        price_features = self.scaler.fit_transform(frame[['price_numeric']])
+        price_column = 'sale_price_numeric' if 'sale_price_numeric' in frame else 'price_numeric'
+        price_features = self.scaler.fit_transform(frame[[price_column]])
         combined = hstack([
             text_features,
             csr_matrix(price_features * self.price_weight),

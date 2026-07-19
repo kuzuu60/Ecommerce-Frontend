@@ -61,13 +61,13 @@
                 Pay in cash to our courier upon receiving your parcel at the doorstep.
               </p>
               <p v-else class="method-desc">
-                You will be redirected to the eSewa portal to complete your secure payment.
+                {{ isMockEsewa ? 'Demo eSewa mode is active. Payment will be verified locally for this demonstration.' : 'You will be redirected to the eSewa portal to complete your secure payment.' }}
               </p>
             </div>
 
             <button @click="handlePayment"
               class="pay-btn" :class="selectedPayment === 'esewa' ? 'pay-btn-esewa' : ''">
-              {{ selectedPayment === 'esewa' ? 'Pay with eSewa' : 'Confirm Order' }}
+              {{ selectedPayment === 'esewa' ? (isMockEsewa ? 'Complete Demo eSewa Payment' : 'Pay with eSewa') : 'Confirm Order' }}
             </button>
           </div>
         </div>
@@ -122,7 +122,7 @@ import { FREE_SHIPPING_THRESHOLD, useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
 import { initiateEsewaPayment } from '@/services/esewaService';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, ESEWA_MODE } from '@/config/api';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
@@ -130,6 +130,7 @@ const toast = useToast();
 const selectedPayment = ref('cash');
 const customerDetails = ref({ fullName: '', address: '', phone: '' });
 const totalAmount = cartStore.totalCost;
+const isMockEsewa = ESEWA_MODE !== 'live';
 
 const validateForm = () => {
   if (!customerDetails.value.fullName || !customerDetails.value.address || !customerDetails.value.phone) {
@@ -161,11 +162,18 @@ const processOrder = async (isEsewa = false) => {
     return true;
   } catch { toast.error("Network Error. Please try again."); return false; }
 };
-const handleEsewa = () => {
+const handleEsewa = async () => {
   const orderItems = cartStore.item_details.filter(i => i.checked).map(i => ({ id: i.id, quantity: i.quantity }));
   if (!orderItems.length) { toast.warning("Please select items first."); return; }
   localStorage.setItem('pending_order', JSON.stringify({ items: orderItems, customerInfo: customerDetails.value }));
-  initiateEsewaPayment(totalAmount, String(orderItems[0].id));
+  try {
+    const result = await initiateEsewaPayment(totalAmount, String(orderItems[0].id));
+    if (result?.mode === 'mock') {
+      window.location.href = `/success?transaction_uuid=${encodeURIComponent(result.transaction_uuid)}`;
+    }
+  } catch (error) {
+    toast.error(error.message || 'Unable to start payment. Please try again.');
+  }
 };
 </script>
 

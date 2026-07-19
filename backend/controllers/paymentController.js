@@ -9,7 +9,7 @@ exports.generateEsewaSignature = (req, res) => {
 
     const secret_key = "8gBm/:&EnhH.1/q";
     const product_code = "EPAYTEST";
-    const transaction_uuid = productId + "_" + Date.now();
+    const transaction_uuid = productId + "-" + Date.now();
 
     const signatureString = `total_amount=${amount},transaction_uuid=${transaction_uuid},product_code=${product_code}`;
     const hash = crypto.HmacSHA256(signatureString, secret_key);
