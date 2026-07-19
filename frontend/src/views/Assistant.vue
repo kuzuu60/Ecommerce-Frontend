@@ -11,7 +11,10 @@
         </div>
         <div>
           <h1 style="font-family: var(--font-display); font-size: 1.4rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.01em;">Product Assistant</h1>
-          <p style="font-size: 0.75rem; color: var(--stone-400); font-weight: 500;">Tell me what matters to you and I’ll help you choose from our catalog</p>
+          <p style="font-size: 0.75rem; color: var(--stone-400); font-weight: 500;">
+            <span class="model-status-dot" :class="{ active: ollamaActive }"></span>
+            {{ ollamaActive ? 'Powered by Qwen 3B · running locally' : 'Tell me what matters to you and I\'ll help you choose from our catalog' }}
+          </p>
         </div>
       </div>
 
@@ -29,7 +32,10 @@
               <!-- Text Bubble -->
               <div :class="[msg.sender === 'user' ? 'user-bubble' : 'ai-bubble', i === 0 ? 'ai-intro-bubble' : '']">
                 <p class="whitespace-pre-line text-sm leading-relaxed">{{ msg.text }}</p>
-                <span v-if="msg.provider" class="provider-tag">via {{ msg.provider }}</span>
+                <span v-if="msg.provider" class="provider-tag">
+                  <span class="provider-dot" :class="[msg.provider.includes('Qwen') ? 'local' : 'fallback']"></span>
+                  {{ msg.provider }}
+                </span>
               </div>
 
               <!-- Strongest Product Matches -->
@@ -130,10 +136,11 @@ const route = useRoute();
 const toast = useToast();
 const cartStore = useCartStore();
 const authStore = useAuthStore();
-const messages = ref([{ sender: 'ai', text: "Tell me what you need, how you’ll use it, and any budget or preferences. I’ll compare the catalog and explain the strongest matches." }]);
+const messages = ref([{ sender: 'ai', text: "Hey! I'm Luxe, your personal AI assistant 🛍️\n\nI can help you find the perfect product, compare options, give shopping advice, or just chat. Ask me anything — from \"what's the best laptop under Rs. 80,000?\" to \"how does RAM affect performance?\". What's on your mind?" }]);
 const inputQuery = ref('');
 const loading = ref(false);
 const isFocused = ref(false);
+const ollamaActive = ref(false);
 const chatContainerRef = ref(null);
 const chatInputRef = ref(null);
 
@@ -191,6 +198,10 @@ const sendMessage = async () => {
       throw new Error(errorData.message || 'The assistant could not complete that request.');
     }
     const data = await res.json();
+    // Track whether the local Qwen model is responding
+    if (data.provider && data.provider.includes('Qwen')) {
+      ollamaActive.value = true;
+    }
     messages.value.push({
       sender: 'ai',
       text: data.answer || "I checked our catalog but couldn't find exact matches.",
@@ -245,14 +256,40 @@ const sendMessage = async () => {
   border: 1px solid var(--cream-200); max-width: 420px;
 }
 .ai-intro-bubble { color: var(--stone-600); }
-.provider-tag { display: block; font-size: 0.65rem; color: var(--stone-400); margin-top: 6px; text-align: right; }
+
+/* Provider tag */
+.provider-tag {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.65rem; color: var(--stone-400); margin-top: 6px; justify-content: flex-end;
+}
+.provider-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.provider-dot.local    { background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,0.6); }
+.provider-dot.fallback { background: var(--stone-400); }
+
+/* Header model status dot */
+.model-status-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--stone-300); vertical-align: middle; margin-right: 5px;
+  transition: background 0.4s;
+}
+.model-status-dot.active {
+  background: #22c55e;
+  animation: statusPulse 2s infinite;
+}
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  50%       { box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+
 /* Product recs */
 .rec-card {
   background: white; border: 1px solid var(--cream-200); border-radius: 14px;
   overflow: hidden; cursor: pointer; transition: box-shadow 0.25s, transform 0.25s;
   display: flex; flex-direction: column;
 }
-.rec-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
 .rec-img-wrap {
   height: 120px; background: var(--cream-100);
   display: flex; align-items: center; justify-content: center;

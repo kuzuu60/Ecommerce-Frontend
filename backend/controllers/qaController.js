@@ -1,7 +1,12 @@
+'use strict';
+
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
 const pool = require('../models/db');
 const { recommendProducts, parseBudget } = require('../utils/contentBasedRecommender');
+const { chat, isOllamaRunning, MODEL } = require('../utils/ollamaService');
+
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 const toProductResponse = (product, recommendation = null) => ({
   id: product.id,
@@ -21,10 +26,12 @@ const toProductResponse = (product, recommendation = null) => ({
   images: product.images,
   dimensions: product.dimensions,
   similarityScore: recommendation ? Number(recommendation.score.toFixed(3)) : undefined,
-  matchReason: recommendation ? recommendation.reason : undefined
+  matchReason: recommendation ? recommendation.reason : undefined,
 });
 
-const answerProductQuestion = (product, question) => {
+// ─── fallback rule-based answer (original logic kept as safety net) ──────────
+
+const answerProductQuestionFallback = (product, question) => {
   const normalizedQuestion = String(question || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const hasAny = (...patterns) => patterns.some((pattern) => pattern.test(normalizedQuestion));
   const originalPrice = Number(product.price) || 0;
@@ -39,58 +46,98 @@ const answerProductQuestion = (product, question) => {
     }
     return `${product.title} is currently priced at Rs. ${price}.`;
   }
-
   if (hasAny(/\b(stock|available|availability|inventory|quantity|left|units?)\b/, /how many/)) {
     return `${product.title} is ${product.availability_status || 'currently listed'} with ${product.stock ?? 0} item(s) in stock.`;
   }
-
-  if (hasAny(/\b(ship|shipping|delivery|deliver|arrive|receive)\b/, /how long (does delivery|will delivery|until delivery)/)) {
+  if (hasAny(/\b(ship|shipping|delivery|deliver|arrive|receive)\b/)) {
     return `${product.shipping_information || 'Shipping information is not listed for this product.'}`;
   }
-
   if (hasAny(/\b(warranty|guarantee|covered|replacement)\b/)) {
     return `${product.title} has ${product.warranty_information || 'no warranty information listed'}.`;
   }
-
   if (hasAny(/\b(brand|manufacturer|maker|made by)\b/)) {
     return `${product.title} is manufactured by ${product.brand || 'a brand not specified in the catalog'}.`;
   }
-
   if (hasAny(/\b(category|type|kind|department)\b/)) {
     return `${product.title} belongs to the ${product.category || 'uncategorized'} category.`;
   }
-
   if (hasAny(/\b(sku|code|product id|product number)\b/)) {
     return `${product.title}'s product code is ${product.sku || 'not listed in the catalog'}.`;
   }
-
   if (hasAny(/\b(weight|heavy|light)\b/)) {
     return `${product.title} weighs ${product.weight ? `${product.weight} unit(s)` : 'an unspecified amount'}.`;
   }
-
   if (hasAny(/\b(dimension|dimensions|measurement|measurements|length|width|height|size)\b/)) {
     const dimensions = product.dimensions
       ? typeof product.dimensions === 'string' ? product.dimensions : JSON.stringify(product.dimensions)
       : 'not listed in the catalog';
     return `${product.title} dimensions are ${dimensions}.`;
   }
-
   if (hasAny(/\b(discount|offer|sale|deal|original price|reduced)\b/)) {
     return discountPercentage > 0
       ? `${product.title} has a ${discountPercentage}% discount. The discounted price is Rs. ${discountedPrice.toLocaleString('en-IN', { maximumFractionDigits: 2 })}.`
       : `${product.title} currently has no discount listed.`;
   }
-
   if (hasAny(/\b(spec|specification|specifications|feature|features|ram|storage|processor|chip|camera|display|screen|material|capacity|compatible|compatibility|use|uses)\b/)) {
     return `${product.title} features: ${specs}. ${product.description || ''}`.trim();
   }
-
   if (hasAny(/\b(about|describe|description|details|overview|tell me|what is)\b/)) {
     return `${product.title} is a product in the ${product.category || 'uncategorized'} category. ${product.description || 'No description is listed.'}`;
   }
-
   return `I can answer questions about ${product.title}'s price, stock, shipping, warranty, brand, category, specifications, discount, weight, dimensions, and product code.`;
 };
+
+// ─── LLM helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Build a compact product data block to inject into the system prompt.
+ * We keep it tight to stay within the 1.5B model's effective context.
+ */
+const buildProductContext = (product) => {
+  const originalPrice = Number(product.price) || 0;
+  const discountPct   = Number(product.discount_percentage) || 0;
+  const discountedPrice = discountPct > 0
+    ? (originalPrice * (1 - discountPct / 100)).toFixed(2)
+    : null;
+
+  const lines = [
+    `Title: ${product.title}`,
+    `Category: ${product.category || 'N/A'}`,
+    `Brand: ${product.brand || 'N/A'}`,
+    `Price: Rs. ${originalPrice.toLocaleString('en-IN')}`,
+    discountPct > 0 ? `Discount: ${discountPct}% off → Rs. ${Number(discountedPrice).toLocaleString('en-IN')}` : null,
+    `Stock: ${product.stock ?? 0} unit(s) — ${product.availability_status || 'Status unknown'}`,
+    `SKU: ${product.sku || 'N/A'}`,
+    `Weight: ${product.weight ? `${product.weight} kg` : 'N/A'}`,
+    product.dimensions ? `Dimensions: ${typeof product.dimensions === 'string' ? product.dimensions : JSON.stringify(product.dimensions)}` : null,
+    `Warranty: ${product.warranty_information || 'None listed'}`,
+    `Shipping: ${product.shipping_information || 'None listed'}`,
+    product.specs ? `Specifications: ${product.specs}` : null,
+    product.description ? `Description: ${product.description}` : null,
+  ].filter(Boolean);
+
+  return lines.join('\n');
+};
+
+/**
+ * Build a compact catalog summary for the recommendation prompt.
+ * Caps each entry so the full catalog fits in ~2 k tokens.
+ */
+const buildCatalogContext = (products) => {
+  return products
+    .slice(0, 80)  // avoid overflowing the 4 k context of 1.5B models
+    .map((p) => {
+      const price    = Number(p.price) || 0;
+      const discount = Number(p.discount_percentage) || 0;
+      const effPrice = discount > 0 ? price * (1 - discount / 100) : price;
+      const descSnip = (p.description || '').slice(0, 80);
+      const specsSnip = (p.specs || '').slice(0, 60);
+      return `- [${p.id}] ${p.title} | ${p.category} | Rs. ${effPrice.toLocaleString('en-IN')}${discount > 0 ? ` (${discount}% off)` : ''} | stock:${p.stock ?? 0} | ${descSnip}${specsSnip ? ' | ' + specsSnip : ''}`;
+    })
+    .join('\n');
+};
+
+// ─── answerQuestion ─────────────────────────────────────────────────────────
 
 exports.answerQuestion = async (req, res) => {
   try {
@@ -105,15 +152,52 @@ exports.answerQuestion = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.json({
-      answer: answerProductQuestion(result.rows[0], question.trim()),
-      provider: 'Product Catalog'
-    });
+    const product = result.rows[0];
+
+    // Try LLM first
+    let answer = null;
+    let provider = 'Product Catalog';
+    let ollamaOk = false;
+
+    try {
+      ollamaOk = await isOllamaRunning();
+    } catch { /* ignore */ }
+
+    if (ollamaOk) {
+      try {
+        const systemPrompt = `You are Luxe, a friendly and knowledgeable human-like shopping assistant for Luxe Commerce — a premium Nepali e-commerce store.
+You have detailed knowledge about the product listed below and can answer any questions about it.
+You can also help with general shopping advice, comparisons, or casual conversation.
+Be warm, concise, and natural. Keep answers to 2–4 sentences unless more detail is needed.
+Always mention prices in Rupees (Rs.) when discussing this product.
+If the user asks something unrelated to the product, answer helpfully from your general knowledge.
+NEVER use robotic phrases like "I'm sorry, but I can't assist with that request" or "As an AI". Speak completely naturally like a human.
+
+PRODUCT CONTEXT (for reference):
+${buildProductContext(product)}`;
+
+        answer   = await chat({ systemPrompt, userMessage: question.trim() });
+        provider = `Qwen ${MODEL.split(':')[1] || '1.5B'} (local)`;
+      } catch (llmErr) {
+        console.error('[Ollama] answerQuestion LLM error:', llmErr.message);
+        // fall through to rule-based fallback
+      }
+    }
+
+    // Fallback if LLM unavailable or errored
+    if (!answer) {
+      answer   = answerProductQuestionFallback(product, question.trim());
+      provider = 'Product Catalog';
+    }
+
+    res.json({ answer, provider });
   } catch (error) {
     console.error('Product question error:', error);
     res.status(500).json({ message: error.message || 'Product question failed' });
   }
 };
+
+// ─── recommendation helpers (kept from original) ────────────────────────────
 
 const buildRecommendationReason = (entry, budget) => {
   const reasons = [];
@@ -121,23 +205,6 @@ const buildRecommendationReason = (entry, budget) => {
   if (entry.product.category) reasons.push(`category: ${entry.product.category}`);
   if (budget !== null && entry.inBudget) reasons.push('within your budget');
   return reasons.join('; ') || 'closest match in the catalog';
-};
-
-const buildRecommendationAnswer = (requirements, rankedProducts, budget) => {
-  if (rankedProducts.length === 0) {
-    return `I could not find an in-stock product that matches "${requirements}" closely enough. Try adding a use case, category, or budget so I can narrow it down.`;
-  }
-
-  const intro = `I understood that you are looking for "${requirements}". I compared the catalog descriptions, categories, brands, and specifications, then kept the strongest matches:`;
-  const lines = rankedProducts.map((entry, index) => {
-    const price = Number(entry.effectivePrice).toLocaleString('en-IN');
-    const discount = Number(entry.product.discount_percentage) || 0;
-    const priceText = discount > 0
-      ? `Rs. ${price} after ${discount}% off`
-      : `Rs. ${price}`;
-    return `${index + 1}. ${entry.product.title} — ${priceText} (${buildRecommendationReason(entry, budget)}).`;
-  });
-  return [intro, ...lines].join('\n');
 };
 
 const getConversationRequirements = (requirements, conversation = []) => {
@@ -153,6 +220,8 @@ const getConversationRequirements = (requirements, conversation = []) => {
   return [...context, currentRequest].join(' ');
 };
 
+// ─── recommendProducts ──────────────────────────────────────────────────────
+
 exports.recommendProducts = async (req, res) => {
   try {
     const { requirements, conversation } = req.body;
@@ -161,26 +230,88 @@ exports.recommendProducts = async (req, res) => {
     }
 
     const requestWithContext = getConversationRequirements(requirements, conversation);
-    const result = await pool.query('SELECT * FROM products');
-    const ranked = recommendProducts(result.rows, requestWithContext);
-    const budget = parseBudget(requestWithContext);
-    const inStock = ranked.filter((entry) => Number(entry.product.stock) > 0);
+
+    // Always run the content-based recommender to get product cards
+    const allProducts = await pool.query('SELECT * FROM products');
+    const ranked       = recommendProducts(allProducts.rows, requestWithContext);
+    const budget       = parseBudget(requestWithContext);
+    const inStock      = ranked.filter((entry) => Number(entry.product.stock) > 0);
     const budgetMatches = budget === null ? inStock : inStock.filter((entry) => entry.inBudget);
-    const candidates = budgetMatches;
-    const relevantCandidates = candidates.filter((entry) => entry.matches.length > 0 || entry.score >= 0.3);
-    const selected = relevantCandidates.slice(0, 4);
+    const relevantCandidates = budgetMatches.filter((entry) => entry.matches.length > 0 || entry.score >= 0.3);
+    const selected     = relevantCandidates.slice(0, 4);
+
+    // Try LLM for the human-readable answer text
+    let answer   = null;
+    let provider = 'Conversational Recommendation Agent';
+    let ollamaOk = false;
+
+    try {
+      ollamaOk = await isOllamaRunning();
+    } catch { /* ignore */ }
+
+    if (ollamaOk) {
+      try {
+        // Build catalog context — use matched products if any, else sample the full catalog
+        const catalogSource = selected.length > 0
+          ? selected.map((e) => e.product)
+          : allProducts.rows.slice(0, 60);
+
+        const systemPrompt = `You are Luxe, a warm, intelligent human-like shopping assistant for Luxe Commerce — a premium Nepali e-commerce store.
+
+You can:
+- Chat naturally and answer general questions about technology, lifestyle, shopping tips, comparisons, and more
+- Greet users, joke around, and be personable
+- Recommend products from the catalog when the user is shopping or asks for suggestions
+
+Guidelines:
+- NEVER use robotic phrases like "I'm sorry, but I can't assist with that request" or "As an AI". Speak completely naturally like a human.
+- If the user asks for something and it is not in the catalog, DO NOT refuse the prompt. Instead, politely explain as a human would: "I'm looking through our catalog and I don't see any exact matches for that right now. Could we try looking for something slightly different?"
+- Always mention prices in Rupees (Rs.) when discussing products
+- Do NOT invent product details, prices, or specs not in the catalog
+- Keep responses conversational and concise (3–6 sentences).
+- If the user greets you or asks a general question, respond naturally like a helpful human assistant.
+
+PRODUCT CATALOG (use only when relevant):
+${buildCatalogContext(catalogSource)}`;
+
+        const userMessage = requestWithContext;
+        answer   = await chat({ systemPrompt, userMessage });
+        provider = `Qwen ${MODEL.split(':')[1] || '1.5B'} (local)`;
+      } catch (llmErr) {
+        console.error('[Ollama] recommendProducts LLM error:', llmErr.message);
+      }
+    }
+
+    // Fallback to the original template-based answer
+    if (!answer) {
+      if (selected.length === 0) {
+        answer = `I could not find an in-stock product that matches "${requestWithContext}" closely enough. Try adding a use case, category, or budget so I can narrow it down.`;
+      } else {
+        const intro = `I understood that you are looking for "${requestWithContext}". Here are the strongest matches from our catalog:`;
+        const lines = selected.map((entry, index) => {
+          const effPrice = Number(entry.effectivePrice).toLocaleString('en-IN');
+          const discount = Number(entry.product.discount_percentage) || 0;
+          const priceText = discount > 0
+            ? `Rs. ${effPrice} after ${discount}% off`
+            : `Rs. ${effPrice}`;
+          return `${index + 1}. ${entry.product.title} — ${priceText} (${buildRecommendationReason(entry, budget)}).`;
+        });
+        answer = [intro, ...lines].join('\n');
+      }
+      provider = 'Conversational Recommendation Agent';
+    }
 
     res.json({
-      answer: buildRecommendationAnswer(requestWithContext, selected, budget),
+      answer,
       recommendedProducts: selected.map((entry) => toProductResponse(entry.product, {
         ...entry,
-        reason: buildRecommendationReason(entry, budget)
+        reason: buildRecommendationReason(entry, budget),
       })),
-      provider: 'Conversational Recommendation Agent',
-      usedConversationContext: Boolean(conversation?.length)
+      provider,
+      usedConversationContext: Boolean(conversation?.length),
     });
   } catch (error) {
-    console.error('Content-based recommendation error:', error);
+    console.error('Recommendation error:', error);
     res.status(500).json({ message: error.message || 'Recommendation failed' });
   }
 };

@@ -4,6 +4,7 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
+const { setupOllama } = require('./utils/ollamaService');
 
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -57,6 +58,11 @@ app.use('/api/esewa', mockEsewaRoutes);
 const startServer = (port, attempt = 1) => {
     const server = app.listen(port, () => {
         console.log(`Server running on http://localhost:${port}`);
+        // Initialise Ollama: check daemon, pull model if needed, warm-start.
+        // Non-blocking — server continues accepting requests even while this runs.
+        setupOllama().catch((err) =>
+            console.error('[Ollama] Setup error (non-fatal):', err.message)
+        );
     });
 
     server.on('error', (err) => {

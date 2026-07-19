@@ -1,6 +1,6 @@
 const http = require('http');
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 const BASE_URL = `http://localhost:${PORT}/api`;
 
 const log = (msg) => console.log(`[SmokeTest] ${msg}`);
@@ -13,7 +13,21 @@ const endpoints = [
     { name: 'Login (No Body)', method: 'POST', path: '/auth/login', expectedStatus: 400 },
     { name: 'Get Orders (Unauthorized)', method: 'GET', path: '/orders', expectedStatus: 401 },
     { name: 'Create Order (Unauthorized)', method: 'POST', path: '/orders', expectedStatus: 401 },
-    { name: 'Get Admin Users (Unauthorized)', method: 'GET', path: '/admin/users', expectedStatus: 401 }
+    { name: 'Get Admin Users (Unauthorized)', method: 'GET', path: '/admin/users', expectedStatus: 401 },
+    { 
+        name: 'AI Product Q&A', 
+        method: 'POST', 
+        path: '/qa', 
+        body: { productId: 1, question: 'What is the price?' }, 
+        expectedStatus: [200, 404] 
+    },
+    { 
+        name: 'AI Product Recommendations', 
+        method: 'POST', 
+        path: '/qa/recommend', 
+        body: { requirements: 'laptop' }, 
+        expectedStatus: 200 
+    }
 ];
 
 async function runTest(endpoint) {
@@ -54,7 +68,7 @@ async function runTest(endpoint) {
         });
 
         if (endpoint.method === 'POST') {
-            req.write(JSON.stringify({}));
+            req.write(JSON.stringify(endpoint.body || {}));
         }
         
         req.end();
