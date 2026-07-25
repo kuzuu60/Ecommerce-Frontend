@@ -217,7 +217,12 @@ const getConversationRequirements = (requirements, conversation = []) => {
     : [];
   const currentRequest = requirements.trim();
   const context = previousRequests.filter((request) => request !== currentRequest);
-  return [...context, currentRequest].join(' ');
+  // Return both: searchQuery (current message only) for TF-IDF,
+  // and llmContext (full history) for the Qwen prompt.
+  return {
+    searchQuery: currentRequest,
+    llmContext: [...context, currentRequest].join(' '),
+  };
 };
 
 // ─── recommendProducts ──────────────────────────────────────────────────────
@@ -229,12 +234,13 @@ exports.recommendProducts = async (req, res) => {
       return res.status(400).json({ message: 'requirements is required' });
     }
 
-    const requestWithContext = getConversationRequirements(requirements, conversation);
+    const { searchQuery, llmContext } = getConversationRequirements(requirements, conversation);
 
-    // Always run the content-based recommender to get product cards
+    // Always run the content-based recommender to get product cards.
+    // Use searchQuery (current message only) so past messages don't pollute the TF-IDF scores.
     const allProducts = await pool.query('SELECT * FROM products');
-    const ranked       = recommendProducts(allProducts.rows, requestWithContext);
-    const budget       = parseBudget(requestWithContext);
+    const ranked       = recommendProducts(allProducts.rows, searchQuery);
+    const budget       = parseBudget(searchQuery);
     const inStock      = ranked.filter((entry) => Number(entry.product.stock) > 0);
     const budgetMatches = budget === null ? inStock : inStock.filter((entry) => entry.inBudget);
     const relevantCandidates = budgetMatches.filter((entry) => entry.matches.length > 0 || entry.score >= 0.3);
@@ -251,10 +257,15 @@ exports.recommendProducts = async (req, res) => {
 
     if (ollamaOk) {
       try {
-        // Build catalog context — use matched products if any, else sample the full catalog
-        const catalogSource = selected.length > 0
-          ? selected.map((e) => e.product)
-          : allProducts.rows.slice(0, 60);
+        // Build catalog context.
+        // If no TF-IDF matches found, explicitly tell Qwen there are no results
+        // rather than feeding it random unrelated products (which causes hallucination).
+        let catalogBlock;
+        if (selected.length > 0) {
+          catalogBlock = buildCatalogContext(selected.map((e) => e.product));
+        } else {
+          catalogBlock = '(no matching products found in the catalog for this request)';
+        }
 
         const systemPrompt = `You are Luxe, a warm, intelligent human-like shopping assistant for Luxe Commerce — a premium Nepali e-commerce store.
 
@@ -265,16 +276,16 @@ You can:
 
 Guidelines:
 - NEVER use robotic phrases like "I'm sorry, but I can't assist with that request" or "As an AI". Speak completely naturally like a human.
-- If the user asks for something and it is not in the catalog, DO NOT refuse the prompt. Instead, politely explain as a human would: "I'm looking through our catalog and I don't see any exact matches for that right now. Could we try looking for something slightly different?"
-- Always mention prices in Rupees (Rs.) when discussing products
-- Do NOT invent product details, prices, or specs not in the catalog
+- CRITICAL: You MUST ONLY recommend products that appear in the PRODUCT CATALOG below. NEVER invent, guess, or mention any product name, brand, price, or spec that is not explicitly listed in the catalog. If the catalog says "no matching products found", tell the user honestly that you don't currently carry that item and suggest they try a different search.
+- Always mention prices in Rupees (Rs.) when discussing products from the catalog.
 - Keep responses conversational and concise (3–6 sentences).
 - If the user greets you or asks a general question, respond naturally like a helpful human assistant.
 
-PRODUCT CATALOG (use only when relevant):
-${buildCatalogContext(catalogSource)}`;
+PRODUCT CATALOG (ONLY recommend items listed here — do NOT invent any others):
+${catalogBlock}`;
 
-        const userMessage = requestWithContext;
+        // Use llmContext (full history joined) so Qwen understands the conversation flow.
+        const userMessage = llmContext;
         answer   = await chat({ systemPrompt, userMessage });
         provider = `Qwen ${MODEL.split(':')[1] || '1.5B'} (local)`;
       } catch (llmErr) {
@@ -285,9 +296,9 @@ ${buildCatalogContext(catalogSource)}`;
     // Fallback to the original template-based answer
     if (!answer) {
       if (selected.length === 0) {
-        answer = `I could not find an in-stock product that matches "${requestWithContext}" closely enough. Try adding a use case, category, or budget so I can narrow it down.`;
+        answer = `I could not find an in-stock product that matches "${searchQuery}" closely enough. Try adding a use case, category, or budget so I can narrow it down.`;
       } else {
-        const intro = `I understood that you are looking for "${requestWithContext}". Here are the strongest matches from our catalog:`;
+        const intro = `I understood that you are looking for "${searchQuery}". Here are the strongest matches from our catalog:`;
         const lines = selected.map((entry, index) => {
           const effPrice = Number(entry.effectivePrice).toLocaleString('en-IN');
           const discount = Number(entry.product.discount_percentage) || 0;
@@ -308,7 +319,7 @@ ${buildCatalogContext(catalogSource)}`;
         reason: buildRecommendationReason(entry, budget),
       })),
       provider,
-      usedConversationContext: Boolean(conversation?.length),
+      usedConversationContext: Boolean(conversation?.length && conversation.length > 1),
     });
   } catch (error) {
     console.error('Recommendation error:', error);

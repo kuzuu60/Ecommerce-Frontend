@@ -51,9 +51,7 @@ onMounted(async () => {
       localStorage.removeItem('pending_order');
     } catch (err) { console.error("eSewa order error:", err); }
   }
-  cartStore.item_details = [];
-  cartStore.totalQuantity();
-  cartStore.costCalculation();
+  cartStore.clearCart();
   if (fetchProducts) fetchProducts();
 });
 </script>

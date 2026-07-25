@@ -150,13 +150,15 @@ const processOrder = async (isEsewa = false) => {
     const res = await fetch(`${API_BASE_URL}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
       body: JSON.stringify({ items: orderItems, customerInfo: customerDetails.value })
     });
     const data = await res.json();
     if (!res.ok) { toast.error(data.message || "Order Failed"); return false; }
     if (!isEsewa) {
       toast.success("Order placed successfully!", { timeout: 2000, hideProgressBar: true });
-      cartStore.item_details = []; cartStore.totalQuantity(); cartStore.costCalculation();
+      cartStore.clearCart(true);
       setTimeout(() => { window.location.href = '/'; }, 2000);
     }
     return true;

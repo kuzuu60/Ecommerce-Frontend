@@ -611,10 +611,13 @@ const signOut = () => {
   userMenuOpen.value = false;
   userOrders.value = [];
   userOrdersError.value = '';
-  cartStore.item_details = [];
-  cartStore.totalQuantity();
-  cartStore.costCalculation();
+  cartStore.clearCart();
   toast.success('You have been signed out.', { timeout: 1500, hideProgressBar: true });
+};
+
+const deleteItem = (item) => {
+  cartStore.removeItem(item.id);
+  cartStore.totalQuantity();
 };
 
 const goToCheckout = () => {
@@ -625,22 +628,15 @@ const goToCheckout = () => {
     return;
   }
   if (cartStore.total_buying_item > 0) {
-    router.push("/payment")
-    cartStore.isCartOpen = false
+    router.push("/payment");
+    cartStore.isCartOpen = false;
     cartStore.costCalculation();
-  }
-  else {
+  } else {
     toast.error("you forgot to select an item my lovely client😘", {
       id: "single-toast", timeout: 1500, hideProgressBar: true,
-    })
+    });
   }
-}
-
-const deleteItem = (item) => {
-  cartStore.removeItem(item.id)
-  cartStore.totalQuantity();
-}
-
+};
 const updatePositive = (item, quantity, action) => {
   cartStore.updateQuantity(item.id, action === "add" ? quantity + 1 : quantity - 1)
   cartStore.totalQuantity();
