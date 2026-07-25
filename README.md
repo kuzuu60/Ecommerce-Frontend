@@ -1,6 +1,17 @@
 # Luxe Commerce
 
-Luxe Commerce is a premium e-commerce application featuring a local AI-powered Product Assistant. The system runs entirely on-device using a local LLM, eliminating the need for cloud API keys or external dependencies.
+Luxe Commerce is a premium, full-stack e-commerce application featuring an on-device, Privacy-First AI Product Assistant and a Content-Based Recommendation Engine. The system runs locally using a local LLM (Qwen 2.5 3B via Ollama), eliminating cloud API fees and external dependencies.
+
+---
+
+## 🏗️ Architecture & Features
+
+* **Retrieval-Augmented Generation (RAG)**: Integrates TF-IDF vector retrieval with Qwen 2.5 3B to answer shopping queries based strictly on actual catalog data.
+* **Smart Intent & Category Matching**: Features custom stemming, token expansion, and device vs. accessory intent filtering (e.g. searching for "phones" automatically filters out phone cases).
+* **Dual Recommendation Engine**:
+  * *Node.js In-Memory Engine*: Fast RAG candidate selection & budget parsing.
+  * *Python Data Science Microservice*: Hybrid cosine similarity ranking combining text similarity (75%) and price scaling (25%).
+* **E-Commerce Suite**: Complete cart management with Pinia, persistent checkout state, eSewa payment integration, and PostgreSQL backend.
 
 ---
 
@@ -13,13 +24,13 @@ Luxe Commerce is a premium e-commerce application featuring a local AI-powered P
 
 ---
 
-### 2. Setup local AI (Ollama)
+### 2. Setup Local AI (Ollama)
 1. Download and install [Ollama](https://ollama.com).
 2. Start the Ollama daemon:
    ```bash
    ollama serve
    ```
-3. (Optional) Pre-pull the model (the backend will also pull this automatically if missing):
+3. (Optional) Pre-pull the model (the backend will automatically pull this if missing):
    ```bash
    ollama pull qwen2.5:3b
    ```
@@ -44,7 +55,7 @@ Luxe Commerce is a premium e-commerce application featuring a local AI-powered P
    DB_PASSWORD=postgres123
    DB_NAME=ecomm_db
 
-   # local AI (Ollama) Settings
+   # Local AI (Ollama) Settings
    OLLAMA_BASE_URL=http://localhost:11434
    OLLAMA_MODEL=qwen2.5:3b
    ```
@@ -52,7 +63,7 @@ Luxe Commerce is a premium e-commerce application featuring a local AI-powered P
    ```bash
    npm run dev
    ```
-   *Note: On the first run, the backend will verify if `qwen2.5:3b` is pulled and automatically download it if necessary. It will also perform a "warm start" loading the model into GPU/CPU memory so that the first user interaction has zero cold-load latency.*
+   *Note: On the first run, the backend will verify if `qwen2.5:3b` is pulled and automatically download it if necessary. It also performs a warm start to preload the model into memory.*
 
 ---
 
@@ -81,4 +92,4 @@ To verify all system endpoints, database connections, rate limiters, and local A
    ```bash
    node smoke-test.js
    ```
-   All tests (Get Products, AI Q&A, AI Recommendations, and Auth Rate limiting) should print a success state (9/9 passed).
+   All basic tests and rate-limiting security checks should pass.
