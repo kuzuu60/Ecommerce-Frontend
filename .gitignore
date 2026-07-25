@@ -6,3 +6,5 @@ node_modules/
 
 # ignore service account credentials
 backend/service-account.json
+
+.env.example

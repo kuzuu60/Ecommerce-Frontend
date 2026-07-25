@@ -21,7 +21,7 @@ Luxe Commerce is a premium e-commerce application featuring a local AI-powered P
    ```
 3. (Optional) Pre-pull the model (the backend will also pull this automatically if missing):
    ```bash
-   ollama pull qwen2.5:1.5b
+   ollama pull qwen2.5:3b
    ```
 
 ---
@@ -46,13 +46,13 @@ Luxe Commerce is a premium e-commerce application featuring a local AI-powered P
 
    # local AI (Ollama) Settings
    OLLAMA_BASE_URL=http://localhost:11434
-   OLLAMA_MODEL=qwen2.5:1.5b
+   OLLAMA_MODEL=qwen2.5:3b
    ```
 4. Start the backend:
    ```bash
    npm run dev
    ```
-   *Note: On the first run, the backend will verify if `qwen2.5:1.5b` is pulled and automatically download it if necessary. It will also perform a "warm start" loading the model into GPU/CPU memory so that the first user interaction has zero cold-load latency.*
+   *Note: On the first run, the backend will verify if `qwen2.5:3b` is pulled and automatically download it if necessary. It will also perform a "warm start" loading the model into GPU/CPU memory so that the first user interaction has zero cold-load latency.*
 
 ---
 
