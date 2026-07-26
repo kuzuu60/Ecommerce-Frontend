@@ -8,14 +8,49 @@ from .preprocessing import prepare_products
 
 
 STOP_WORDS = {
+    # Common English stop words
     'a', 'about', 'an', 'and', 'are', 'for', 'from', 'in', 'is', 'of', 'on',
     'or', 'the', 'this', 'to', 'with', 'featuring', 'feature', 'features',
     'product', 'products', 'design', 'modern', 'quality',
+    # Generic category/spec words that appear across many unrelated products
+    # after enrichment. Keeping them in TF-IDF would inflate cross-category
+    # similarity scores (e.g. a Kitchen Pan matching a Cricket Ball because
+    # both have "sports equipment outdoor" in their specs).
+    'tool', 'tools', 'equipment', 'accessories', 'accessory',
+    'sports', 'sport', 'kitchen', 'home', 'items', 'item',
+    'electronics', 'game', 'games', 'outdoor', 'indoor',
+    'use', 'used', 'using', 'ideal', 'perfect', 'great', 'good',
+    'compatible', 'includes', 'included', 'available',
+    # Adjectives that appear everywhere and add zero discriminative signal
+    'premium', 'stylish', 'slim', 'powerful', 'durable', 'versatile',
+    'compact', 'lightweight', 'portable', 'elegant', 'classic', 'essential',
+    'its', 'their', 'your', 'our', 'more', 'also', 'can', 'well', 'provides',
+    # Colour words that appear in product names across all categories
+    'black', 'white', 'grey', 'gray', 'silver', 'gold', 'red', 'blue', 'green',
+    'space',  # e.g. "Space Grey" matching unrelated products
 }
 
-MIN_SIMILARITY = 0.1
-PRICE_RANGE_TOLERANCE = 0.5
-PRICE_FACTOR_WEIGHT = 0.25
+MIN_SIMILARITY = 0.15   # raised from 0.12 – require stronger signal before recommending
+PRICE_RANGE_TOLERANCE = 0.4   # ±40% — keeps suggestions in a genuinely comparable price bracket
+PRICE_FACTOR_WEIGHT = 0.20    # price has meaningful influence; text/spec still dominates at 80%
+DEFAULT_TOP_N = 4             # show only the top most-similar products
+
+# Strict allowlist of which categories can appear in recommendations for each
+# source category. This prevents cross-department leakage (e.g. iPhones showing
+# under a laptop). Pairs that share genuine buyer intent are grouped together
+# (smartphones ↔ mobile-accessories, furniture ↔ home-decoration).
+# Unknown/new categories fall back to same-category-only via the recommend() logic.
+ALLOWED_CATEGORIES = {
+    'laptops':             {'laptops'},
+    'smartphones':         {'smartphones', 'mobile-accessories'},
+    'tablets':             {'tablets', 'mobile-accessories', 'smartphones'},
+    'mobile-accessories':  {'mobile-accessories', 'smartphones', 'tablets'},
+    'furniture':           {'furniture', 'home-decoration'},
+    'home-decoration':     {'home-decoration', 'furniture'},
+    'kitchen-accessories': {'kitchen-accessories'},
+    'sports-accessories':  {'sports-accessories'},
+    'sunglasses':          {'sunglasses'},
+}
 
 
 def _tokens(value):
@@ -68,6 +103,13 @@ class ContentBasedRecommender:
 
         target_index = int(matches[0])
         target = self.products.iloc[target_index]
+        target_category = str(target['category'] or '').strip()
+
+        # Determine which categories are allowed in results for this product.
+        # Fall back to same-category-only for any category not in the allowlist
+        # (e.g. a newly added category will safely stay within itself).
+        allowed = ALLOWED_CATEGORIES.get(target_category, {target_category})
+
         text_scores = cosine_similarity(self.features[target_index], self.features).ravel()
         target_price = float(target['sale_price_numeric'])
         candidate_prices = self.products['sale_price_numeric'].to_numpy(dtype='float64')
@@ -83,15 +125,28 @@ class ContentBasedRecommender:
 
         scores = (text_scores * (1 - PRICE_FACTOR_WEIGHT)) + (price_similarity * PRICE_FACTOR_WEIGHT)
         scores[target_index] = -1
-        candidate_indexes = [
-            index for index in np.argsort(-scores)
-            if index != target_index
-            and self.products.iloc[index]['stock_numeric'] > 0
-            and in_price_range[index]
-            and scores[index] >= MIN_SIMILARITY
-        ]
-        if top_n is not None:
-            candidate_indexes = candidate_indexes[:min(max(int(top_n), 1), 20)]
+
+        def _filter_candidates(apply_price_range):
+            return [
+                index for index in np.argsort(-scores)
+                if index != target_index
+                and str(self.products.iloc[index]['category'] or '').strip() in allowed
+                and self.products.iloc[index]['stock_numeric'] > 0
+                and scores[index] >= MIN_SIMILARITY
+                and (not apply_price_range or in_price_range[index])
+            ]
+
+        # Apply price range filter; fall back to no price filter if too few results.
+        # This handles categories with few items (e.g. furniture has only 5 products)
+        # where strict price filtering would leave zero recommendations.
+        candidate_indexes = _filter_candidates(apply_price_range=True)
+        if len(candidate_indexes) < 2:
+            candidate_indexes = _filter_candidates(apply_price_range=False)
+
+        # Use caller's top_n if provided, otherwise fall back to DEFAULT_TOP_N
+        limit = int(top_n) if top_n is not None else DEFAULT_TOP_N
+        limit = min(max(limit, 1), 20)
+        candidate_indexes = candidate_indexes[:limit]
 
         recommendations = []
         for index in candidate_indexes:

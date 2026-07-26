@@ -1,4 +1,5 @@
-const crypto = require('crypto-js');
+const cryptoJs = require('crypto-js');
+const { randomUUID } = require('crypto');
 
 exports.generateEsewaSignature = (req, res) => {
     const { amount, productId } = req.body;
@@ -9,11 +10,11 @@ exports.generateEsewaSignature = (req, res) => {
 
     const secret_key = "8gBm/:&EnhH.1/q";
     const product_code = "EPAYTEST";
-    const transaction_uuid = productId + "-" + Date.now();
+    const transaction_uuid = randomUUID();
 
     const signatureString = `total_amount=${amount},transaction_uuid=${transaction_uuid},product_code=${product_code}`;
-    const hash = crypto.HmacSHA256(signatureString, secret_key);
-    const signature = crypto.enc.Base64.stringify(hash);
+    const hash = cryptoJs.HmacSHA256(signatureString, secret_key);
+    const signature = cryptoJs.enc.Base64.stringify(hash);
 
     res.json({
         signature,

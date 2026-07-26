@@ -227,6 +227,16 @@ const getConversationRequirements = (requirements, conversation = []) => {
 
 // ─── recommendProducts ──────────────────────────────────────────────────────
 
+const isSingularIntent = (query) => {
+  const norm = String(query || '').toLowerCase().trim();
+  const isExplicitPlural = /\b(laptops|phones|tablets|products|options|choices|list|show me|compare)\b/i.test(norm);
+  if (isExplicitPlural) return false;
+
+  const hasSingularOrSuperlative = /\b(highest|best|top|single|one|most|fastest|greatest|a|the|which)\b/i.test(norm);
+  const isSingularNoun = /\b(laptop|phone|tablet|product)\b/i.test(norm);
+  return hasSingularOrSuperlative || isSingularNoun;
+};
+
 exports.recommendProducts = async (req, res) => {
   try {
     const { requirements, conversation } = req.body;
@@ -243,8 +253,24 @@ exports.recommendProducts = async (req, res) => {
     const budget       = parseBudget(searchQuery);
     const inStock      = ranked.filter((entry) => Number(entry.product.stock) > 0);
     const budgetMatches = budget === null ? inStock : inStock.filter((entry) => entry.inBudget);
-    const relevantCandidates = budgetMatches.filter((entry) => entry.matches.length > 0 || entry.score >= 0.3);
-    const selected     = relevantCandidates.slice(0, 4);
+
+    // Dynamic relevance filtering: do NOT force 4 cards if lower-ranked products are not highly similar
+    const topScore = budgetMatches.length > 0 ? budgetMatches[0].score : 0;
+    // Candidate must have a non-trivial score and be at least 55% as relevant as the top match
+    const minScoreThreshold = Math.max(0.10, topScore * 0.55);
+
+    const relevantCandidates = budgetMatches.filter((entry) => {
+      if (entry.score < minScoreThreshold) return false;
+      // If score is weak (< 0.25), avoid weak single-token fallbacks when a strong top match exists
+      if (entry.score < 0.25 && entry.matches.length <= 1 && topScore >= 0.35) return false;
+      return true;
+    });
+
+    const isSingular = isSingularIntent(searchQuery);
+    // If singular/superlative intent ("best laptop", "highest performing laptop"), select top 1-2.
+    // If plural/comparison intent ("laptops", "show laptops"), select top 4.
+    const maxItems = isSingular ? 2 : 4;
+    const selected = relevantCandidates.slice(0, maxItems);
 
     // Try LLM for the human-readable answer text
     let answer   = null;
@@ -258,13 +284,22 @@ exports.recommendProducts = async (req, res) => {
     if (ollamaOk) {
       try {
         // Build catalog context.
-        // If no TF-IDF matches found, explicitly tell Qwen there are no results
-        // rather than feeding it random unrelated products (which causes hallucination).
         let catalogBlock;
         if (selected.length > 0) {
           catalogBlock = buildCatalogContext(selected.map((e) => e.product));
         } else {
           catalogBlock = '(no matching products found in the catalog for this request)';
+        }
+
+        let productRule;
+        if (selected.length === 1) {
+          productRule = '- Focus your response on the single recommended product in the PRODUCT CATALOG below.';
+        } else if (selected.length === 2) {
+          productRule = '- Highlight the #1 top product as the primary recommendation, and briefly acknowledge the #2 runner-up product (e.g., "Another top option is [Title]"). Make sure both items in the PRODUCT CATALOG below are mentioned in your answer.';
+        } else if (selected.length > 2) {
+          productRule = '- You MUST mention and briefly compare ALL products listed in the PRODUCT CATALOG below so your response covers every recommended card.';
+        } else {
+          productRule = '';
         }
 
         const systemPrompt = `You are Luxe, a warm, intelligent human-like shopping assistant for Luxe Commerce — a premium Nepali e-commerce store.
@@ -278,6 +313,7 @@ Guidelines:
 - NEVER use robotic phrases like "I'm sorry, but I can't assist with that request" or "As an AI". Speak completely naturally like a human.
 - CRITICAL: You MUST ONLY recommend products that appear in the PRODUCT CATALOG below. NEVER invent, guess, or mention any product name, brand, price, or spec that is not explicitly listed in the catalog. If the catalog says "no matching products found", tell the user honestly that you don't currently carry that item and suggest they try a different search.
 - Always mention prices in Rupees (Rs.) when discussing products from the catalog.
+${productRule}
 - Keep responses conversational and concise (3–6 sentences).
 - If the user greets you or asks a general question, respond naturally like a helpful human assistant.
 

@@ -15,10 +15,15 @@ const queryAliases = new Map([
     ['university', ['student', 'college', 'education']],
     ['work', ['office', 'business', 'productivity']],
     ['office', ['business', 'productivity']],
-    ['gaming', ['game', 'performance']],
+    ['gaming', ['game', 'performance', 'graphics', 'gpu', 'rtx']],
+    ['performance', ['gaming', 'game', 'speed', 'fast', 'powerful', 'flagship', 'pro', 'rtx', 'i7', 'i9', 'heavy']],
+    ['best', ['top', 'premium', 'flagship', 'pro', 'high', 'ultra']],
+    ['high', ['pro', 'max', 'ultra', 'flagship', 'performance']],
+    ['top', ['best', 'flagship', 'pro', 'premium']],
     ['camera', ['photography', 'photo']],
     ['photos', ['photography', 'camera']],
-    ['cheap', ['affordable', 'budget']],
+    ['cheap', ['affordable', 'budget', 'low']],
+    ['budget', ['cheap', 'affordable', 'low']],
     ['durable', ['reliable', 'quality']]
 ]);
 
@@ -53,6 +58,7 @@ const expandQueryTokens = (value) => {
     return [...expanded];
 };
 
+
 const parseBudget = (requirements) => {
     const text = String(requirements || '').replace(/,/g, '');
     const matches = [...text.matchAll(/(?:under|below|less than|upto|up to|maximum|max|within|budget)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh)?/gi)];
@@ -66,15 +72,6 @@ const parseBudget = (requirements) => {
     if (multiplier === 'lakh') return amount * 100000;
     return amount;
 };
-
-const buildDocument = (product) => [
-    product.title,
-    product.category,
-    product.brand,
-    product.description,
-    product.specs,
-    product.tags
-].filter(Boolean).join(' ');
 
 const buildIdf = (products) => {
     const documentFrequency = new Map();
@@ -106,6 +103,55 @@ const cosineSimilarity = (queryTokens, documentTokens, getIdf) => {
     return dotProduct / (Math.sqrt(queryMagnitude) * Math.sqrt(documentMagnitude));
 };
 
+const CATEGORY_KEYWORDS = {
+    'laptops': ['laptop', 'laptops', 'macbook', 'notebook', 'chromebook'],
+    'smartphones': ['phone', 'phones', 'smartphone', 'smartphones', 'mobile', 'mobiles', 'iphone'],
+    'tablets': ['tablet', 'tablets', 'ipad', 'ipads'],
+    'mobile-accessories': ['charger', 'chargers', 'case', 'cover', 'screen protector', 'earphones', 'airpods', 'magsafe', 'monopod', 'selfie stick'],
+    'kitchen-accessories': ['kitchen', 'pan', 'cookware', 'utensil', 'blender', 'oven', 'stove', 'knife', 'fork', 'spoon', 'plate', 'mug', 'wok'],
+    'sports-accessories': ['sports', 'ball', 'bat', 'racket', 'racquet', 'shuttlecock', 'cricket', 'football', 'soccer', 'golf', 'volleyball', 'baseball', 'helmet'],
+    'furniture': ['furniture', 'chair', 'table', 'sofa', 'sink', 'desk', 'bed'],
+    'home-decoration': ['decoration', 'decor', 'frame', 'plant', 'swing', 'lamp', 'vase', 'showpiece'],
+    'sunglasses': ['sunglasses', 'glasses', 'shades', 'eyewear']
+};
+
+const detectCategoryIntent = (queryTokens) => {
+    const tokens = new Set(queryTokens);
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+        if (keywords.some((keyword) => tokens.has(keyword))) {
+            return category;
+        }
+    }
+    return null;
+};
+
+const buildDocument = (product) => {
+    let doc = [
+        product.title,
+        product.category,
+        product.brand,
+        product.description,
+        product.specs,
+        product.tags
+    ].filter(Boolean).join(' ');
+
+    const category = String(product.category || '').toLowerCase();
+    if (category === 'laptops') {
+        doc += ' laptop laptops notebook macbook';
+    } else if (category === 'smartphones') {
+        doc += ' phone phones smartphone smartphones mobile';
+    } else if (category === 'tablets') {
+        doc += ' tablet tablets ipad';
+    } else if (category === 'sunglasses') {
+        doc += ' sunglasses glasses shades eyewear';
+    } else if (category === 'furniture') {
+        doc += ' furniture chair table sofa desk';
+    } else if (category === 'sports-accessories') {
+        doc += ' sports equipment ball bat racket';
+    }
+    return doc;
+};
+
 const getEffectivePrice = (product) => {
     const price = Number(product.price) || 0;
     const discount = Number(product.discount_percentage ?? product.discountPercentage ?? 0) || 0;
@@ -118,8 +164,18 @@ const isAccessoryQuery = (queryTokens) => {
 };
 
 const isDeviceQuery = (queryTokens) => {
-    const deviceKeywords = new Set(['phone', 'phones', 'smartphone', 'smartphones', 'mobile', 'mobiles', 'laptop', 'laptops', 'tablet', 'tablets', 'computer', 'notebook']);
+    const deviceKeywords = new Set(['phone', 'phones', 'smartphone', 'smartphones', 'mobile', 'mobiles', 'laptop', 'laptops', 'tablet', 'tablets', 'computer', 'notebook', 'macbook']);
     return queryTokens.some((token) => deviceKeywords.has(token));
+};
+
+const isPerformanceQuery = (queryTokens) => {
+    const keywords = new Set(['performance', 'fast', 'powerful', 'best', 'gaming', 'flagship', 'pro', 'ultra', 'speed', 'top', 'high']);
+    return queryTokens.some((token) => keywords.has(token));
+};
+
+const isBudgetQuery = (queryTokens) => {
+    const keywords = new Set(['cheap', 'budget', 'affordable', 'low', 'cheapest', 'economic']);
+    return queryTokens.some((token) => keywords.has(token));
 };
 
 const recommendProducts = (products, requirements) => {
@@ -128,19 +184,49 @@ const recommendProducts = (products, requirements) => {
     const getIdf = buildIdf(products);
     const wantsAccessory = isAccessoryQuery(queryTokens);
     const wantsDevice = isDeviceQuery(queryTokens);
+    const wantsPerformance = isPerformanceQuery(queryTokens);
+    const wantsBudget = isBudgetQuery(queryTokens);
+    const targetCategory = detectCategoryIntent(queryTokens);
 
     return products.map((product) => {
+        const category = String(product.category || '').toLowerCase();
+        
+        // Strict Category Isolation: If user explicitly requested laptops, exclude smartphones/tablets/etc.
+        if (targetCategory && category !== targetCategory) {
+            return { product, score: 0, matches: [], inBudget: false, effectivePrice: getEffectivePrice(product) };
+        }
+
         const documentTokens = tokenize(buildDocument(product));
         const documentTokenSet = new Set(documentTokens);
         let similarity = cosineSimilarity(queryTokens, documentTokens, getIdf);
 
-        const category = String(product.category || '').toLowerCase();
         const title = String(product.title || '').toLowerCase();
+        const description = String(product.description || '').toLowerCase();
+        const specs = String(product.specs || '').toLowerCase();
+        const fullText = `${title} ${specs} ${description}`;
         const isAccessoryProduct = category.includes('accessories') || title.includes('case') || title.includes('cover') || title.includes('charger') || title.includes('screen protector');
 
-        // If user is searching for a main device (e.g. phone) and did NOT ask for accessories, penalize accessory products
+        // If user is searching for a main device and did NOT ask for accessories, penalize accessory products
         if (wantsDevice && !wantsAccessory && isAccessoryProduct) {
             similarity *= 0.05;
+        }
+
+        // Hardware & Spec Tier Boost for laptops/devices:
+        if (category === 'laptops') {
+            if (/m1 pro|m2 pro|m3 max|m4|i9|rtx 3070|rtx 4080|32gb/i.test(fullText)) {
+                similarity += 0.35;
+            } else if (/i7|16gb|512gb|oled|3k|retina|spectre|zenbook|xps|matebook/i.test(fullText)) {
+                similarity += 0.25;
+            } else if (/ryzen 5|8gb|yoga|swift/i.test(fullText)) {
+                similarity += 0.15;
+            }
+        }
+
+        // Additional boost for performance/gaming intent
+        if (wantsPerformance) {
+            if (/i7|i9|ryzen 7|ryzen 9|rtx|m1|m2|m3|m4|pro|max|ultra|gaming|16gb|32gb|ssd|performance|flagship/i.test(fullText)) {
+                similarity *= 1.3;
+            }
         }
 
         const effectivePrice = getEffectivePrice(product);
@@ -149,8 +235,10 @@ const recommendProducts = (products, requirements) => {
 
         return { product, score: similarity, matches, inBudget, effectivePrice };
     }).sort((left, right) => {
-        if (right.score !== left.score) return right.score - left.score;
-        return left.effectivePrice - right.effectivePrice;
+        if (Math.abs(right.score - left.score) > 0.01) return right.score - left.score;
+        if (wantsBudget) return left.effectivePrice - right.effectivePrice;
+        if (wantsPerformance) return right.effectivePrice - left.effectivePrice;
+        return right.score - left.score;
     });
 };
 

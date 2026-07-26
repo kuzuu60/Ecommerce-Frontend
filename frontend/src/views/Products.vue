@@ -181,7 +181,7 @@ const addToCart = (id, title, thumbnail, price) => {
 };
 const getNewProductList = () => {
   selectedProductList.value = selectedTab.value === 'deals'
-    ? products.value.filter(p => Number(p.discountPercentage || 0) > 10)
+    ? products.value.filter(p => Number(p.discountPercentage || 0) > 0)
     : products.value.filter(p => p.category === selectedTab.value);
 };
 const handleClickOutside = (e) => {

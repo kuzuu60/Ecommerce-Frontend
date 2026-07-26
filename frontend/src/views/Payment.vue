@@ -60,14 +60,47 @@
               <p v-if="selectedPayment === 'cash'" class="method-desc">
                 Pay in cash to our courier upon receiving your parcel at the doorstep.
               </p>
-              <p v-else class="method-desc">
-                {{ isMockEsewa ? 'Demo eSewa mode is active. Payment will be verified locally for this demonstration.' : 'You will be redirected to the eSewa portal to complete your secure payment.' }}
-              </p>
+              <div v-else class="flex flex-col gap-3">
+                <p class="method-desc">
+                  You will be redirected to the official eSewa Test Portal to complete your payment.
+                </p>
+                <!-- Demo credentials helper -->
+                <div style="background: rgba(65,161,36,0.05); border: 1px solid rgba(65,161,36,0.2); border-radius: 12px; padding: 0.875rem; text-align: left;">
+                  <p style="font-weight: 700; color: #2d7a1a; font-size: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    eSewa Demo Credentials
+                  </p>
+                  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; background: white; padding: 0.5rem; border-radius: 8px; border: 1px solid rgba(65,161,36,0.15);">
+                    <div>
+                      <span style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone-400);">eSewa ID</span>
+                      <span style="font-family: monospace; font-size: 11px; color: var(--stone-700); font-weight: 600;">9806800001</span>
+                    </div>
+                    <div>
+                      <span style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone-400);">Password</span>
+                      <span style="font-family: monospace; font-size: 11px; color: var(--stone-700); font-weight: 600;">Nepal@123</span>
+                    </div>
+                    <div>
+                      <span style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone-400);">MPIN</span>
+                      <span style="font-family: monospace; font-size: 11px; color: var(--stone-700); font-weight: 600;">1122</span>
+                    </div>
+                    <div>
+                      <span style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stone-400);">OTP / Token</span>
+                      <span style="font-family: monospace; font-size: 11px; color: var(--stone-700); font-weight: 600;">123456</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <button @click="handlePayment"
-              class="pay-btn" :class="selectedPayment === 'esewa' ? 'pay-btn-esewa' : ''">
-              {{ selectedPayment === 'esewa' ? (isMockEsewa ? 'Complete Demo eSewa Payment' : 'Pay with eSewa') : 'Confirm Order' }}
+            <button @click="handlePayment" :disabled="isPaying"
+              class="pay-btn" :class="selectedPayment === 'esewa' ? 'pay-btn-esewa' : ''"
+              :style="isPaying ? 'opacity: 0.7; cursor: not-allowed;' : ''">
+              {{ isPaying ? 'Processing...' : (selectedPayment === 'esewa' ? 'Pay with eSewa (Demo Portal)' : 'Confirm Order') }}
+            </button>
+            <button v-if="selectedPayment === 'esewa'" @click="handleEsewa(true)"
+              style="display: block; width: 100%; margin-top: 0.625rem; background: none; border: none; font-size: 0.75rem; font-weight: 600; color: var(--stone-400); cursor: pointer; text-decoration: underline; text-align: center;"
+              onmouseover="this.style.color='var(--stone-600)'" onmouseout="this.style.color='var(--stone-400)'">
+              Use Instant Mock Payment (Fallback)
             </button>
           </div>
         </div>
@@ -97,7 +130,7 @@
             <span>Total</span>
             <span style="color: var(--amber-600);">Rs. {{ cartStore.totalCost.toLocaleString('en-IN') }}</span>
           </div>
-          
+
           <!-- Cart items preview -->
           <div class="mt-5 pt-5 flex flex-col gap-4" style="border-top: 1px dashed var(--cream-200);">
             <div v-for="item in cartStore.item_details.filter(i => i.checked)" :key="item.id" class="flex items-center gap-4 group">
@@ -122,15 +155,14 @@ import { FREE_SHIPPING_THRESHOLD, useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from 'vue-toastification';
 import { initiateEsewaPayment } from '@/services/esewaService';
-import { API_BASE_URL, ESEWA_MODE } from '@/config/api';
+import { API_BASE_URL } from '@/config/api';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
 const toast = useToast();
 const selectedPayment = ref('cash');
 const customerDetails = ref({ fullName: '', address: '', phone: '' });
-const totalAmount = cartStore.totalCost;
-const isMockEsewa = ESEWA_MODE !== 'live';
+const isPaying = ref(false);
 
 const validateForm = () => {
   if (!customerDetails.value.fullName || !customerDetails.value.address || !customerDetails.value.phone) {
@@ -139,17 +171,17 @@ const validateForm = () => {
   }
   return true;
 };
+
 const handlePayment = () => {
   if (!validateForm()) return;
-  selectedPayment.value === 'esewa' ? handleEsewa() : processOrder();
+  selectedPayment.value === 'esewa' ? handleEsewa(false) : processOrder();
 };
+
 const processOrder = async (isEsewa = false) => {
   try {
     const orderItems = cartStore.item_details.filter(i => i.checked).map(i => ({ id: i.id, quantity: i.quantity }));
     if (!orderItems.length) { toast.warning("Please select items first."); return false; }
     const res = await fetch(`${API_BASE_URL}/api/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
       body: JSON.stringify({ items: orderItems, customerInfo: customerDetails.value })
@@ -162,19 +194,31 @@ const processOrder = async (isEsewa = false) => {
       setTimeout(() => { window.location.href = '/'; }, 2000);
     }
     return true;
-  } catch { toast.error("Network Error. Please try again."); return false; }
+  } catch { toast.error("Network Error. Please try again."); isPaying.value = false; return false; }
 };
-const handleEsewa = async () => {
+
+const handleEsewa = async (useFallback = false) => {
+  if (!validateForm()) return;
+  if (isPaying.value) return; // prevent double submission
   const orderItems = cartStore.item_details.filter(i => i.checked).map(i => ({ id: i.id, quantity: i.quantity }));
   if (!orderItems.length) { toast.warning("Please select items first."); return; }
+  isPaying.value = true;
   localStorage.setItem('pending_order', JSON.stringify({ items: orderItems, customerInfo: customerDetails.value }));
   try {
-    const result = await initiateEsewaPayment(totalAmount, String(orderItems[0].id));
+    const result = await initiateEsewaPayment(cartStore.totalCost, String(orderItems[0].id), useFallback);
     if (result?.mode === 'mock') {
       window.location.href = `/success?transaction_uuid=${encodeURIComponent(result.transaction_uuid)}`;
     }
+    // test mode: form.submit() handles redirect — isPaying stays true intentionally
   } catch (error) {
-    toast.error(error.message || 'Unable to start payment. Please try again.');
+    toast.error(error.message || 'Unable to connect to eSewa portal. Using instant fallback...');
+    try {
+      const fallbackResult = await initiateEsewaPayment(cartStore.totalCost, String(orderItems[0].id), true);
+      window.location.href = `/success?transaction_uuid=${encodeURIComponent(fallbackResult.transaction_uuid)}`;
+    } catch (fallbackErr) {
+      toast.error('Payment failed: ' + fallbackErr.message);
+      isPaying.value = false; // re-enable only on total failure
+    }
   }
 };
 </script>

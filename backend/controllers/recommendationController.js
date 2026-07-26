@@ -31,7 +31,14 @@ const runPythonRecommender = (payload) => new Promise((resolve, reject) => {
             settled = true;
             reject(new Error('Recommendation model timed out'));
         }
-    }, 15000);
+    }, 30000);
+
+    process.stdin.on('error', (err) => {
+        // Ignore write EPIPE/EOF errors when process dies or closes stdin early
+        if (err.code !== 'EPIPE' && err.code !== 'EOF') {
+            console.error('Python recommender stdin error:', err);
+        }
+    });
 
     process.stdout.on('data', (chunk) => { output += chunk.toString(); });
     process.stderr.on('data', (chunk) => { errorOutput += chunk.toString(); });

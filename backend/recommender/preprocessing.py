@@ -62,13 +62,19 @@ def prepare_products(products):
     frame['category_group'] = frame['category'].map(category_group)
     frame['feature_text'] = frame.apply(
         lambda row: ' '.join(filter(None, [
+            # Department prefix for broad grouping
             f'department-{row.category_group}',
-            row.category,
-            row.category,
-            row.title,
+            # Category repeated twice – important discriminator
+            row.category, row.category,
+            # Title repeated three times – strongest identity signal
+            row.title, row.title, row.title,
+            # Brand
             row.brand,
+            # Specs repeated twice – second strongest for similarity
+            row.specs, row.specs,
+            # Description once – provides context but is more verbose
             row.description,
-            row.specs,
+            # Tags once
             row.tags,
         ])),
         axis=1,

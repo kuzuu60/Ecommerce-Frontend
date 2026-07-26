@@ -4,13 +4,13 @@ from sklearn.preprocessing import StandardScaler, normalize
 
 
 class ProductFeatureExtractor:
-    def __init__(self, price_weight=0.15):
+    def __init__(self, price_weight=0.10):
         self.price_weight = price_weight
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
-            ngram_range=(1, 2),
+            ngram_range=(1, 3),   # capture phrases like "16gb ram", "super amoled display"
             min_df=1,
-            max_features=10000,
+            max_features=15000,   # increased to accommodate richer vocabulary after enrichment
             token_pattern=r'(?u)\b[a-zA-Z0-9][a-zA-Z0-9+#.-]*\b',
         )
         self.scaler = StandardScaler()

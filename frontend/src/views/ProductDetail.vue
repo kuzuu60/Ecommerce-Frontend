@@ -94,25 +94,51 @@
       </div>
 
       <!-- Similar Products -->
-      <section v-if="similarProducts.length" class="mt-16">
-        <div class="mb-6 pb-4" style="border-bottom: 1px solid var(--cream-200);">
-          <p class="section-label mb-1">You may also like</p>
-          <h3 style="font-family: var(--font-display); font-size: 1.8rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.02em;">Similar Products</h3>
+      <section class="mt-16">
+        <!-- Skeleton while loading -->
+        <div v-if="recsLoading">
+          <div class="mb-6 pb-4" style="border-bottom: 1px solid var(--cream-200);">
+            <p class="section-label mb-1">You may also like</p>
+            <h3 style="font-family: var(--font-display); font-size: 1.8rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.02em;">Similar Products</h3>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div v-for="n in 4" :key="n" class="sim-skeleton">
+              <div class="skel-img"></div>
+              <div class="skel-body">
+                <div class="skel-line short"></div>
+                <div class="skel-line"></div>
+                <div class="skel-line medium"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-          <article v-for="rec in similarProducts" :key="rec.productId"
-            class="sim-card group" @click="router.push(`/${rec.category}/${rec.productId}`)">
-            <div class="sim-img-wrap">
-              <img :src="rec.thumbnail" :alt="rec.name" class="sim-img" />
-            </div>
-            <div class="sim-body">
-              <p class="sim-score">{{ Math.round(rec.similarityScore * 100) }}% match</p>
-              <h4 class="sim-name">{{ rec.name }}</h4>
-              <p class="sim-reason">{{ rec.reason }}</p>
-              <p class="sim-price">Rs. {{ getDiscountedPrice(rec).toLocaleString() }}</p>
-              <p v-if="rec.discountPercentage > 0" class="sim-original-price">Rs. {{ Number(rec.price).toLocaleString() }}</p>
-            </div>
-          </article>
+
+        <!-- Results -->
+        <div v-else-if="similarProducts.length">
+          <div class="mb-6 pb-4" style="border-bottom: 1px solid var(--cream-200);">
+            <p class="section-label mb-1">You may also like</p>
+            <h3 style="font-family: var(--font-display); font-size: 1.8rem; color: var(--stone-900); font-weight: 400; letter-spacing: -0.02em;">Similar Products</h3>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            <article v-for="rec in similarProducts.slice(0, 4)" :key="rec.productId"
+              class="sim-card group" @click="router.push(`/${rec.category}/${rec.productId}`)">
+              <div class="sim-img-wrap">
+                <img :src="rec.thumbnail" :alt="rec.name" class="sim-img" />
+                <!-- Quick Add overlay -->
+                <div class="sim-add-overlay" @click.stop="quickAddToCart(rec)">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                  Add to Cart
+                </div>
+              </div>
+              <div class="sim-body">
+                <span :class="badgeClass(rec.reason)" class="sim-badge">{{ badgeLabel(rec.reason) }}</span>
+                <h4 class="sim-name">{{ rec.name }}</h4>
+                <p class="sim-reason">{{ cleanReason(rec.reason) }}</p>
+                <p class="sim-price">Rs. {{ getDiscountedPrice(rec).toLocaleString() }}</p>
+                <p v-if="rec.discountPercentage > 0" class="sim-original-price">Rs. {{ Number(rec.price).toLocaleString() }}</p>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -169,10 +195,12 @@ const qaProvider = ref('');
 const qaLoading = ref(false);
 const qaError = ref(null);
 const similarProducts = ref([]);
+const recsLoading = ref(false);
 let recommendationsRequestId = 0;
 const fetchRecommendations = async (productId) => {
   const requestId = ++recommendationsRequestId;
   similarProducts.value = [];
+  recsLoading.value = true;
   try {
     const res = await fetch(`${API_BASE_URL}/api/products/${productId}/recommendations`);
     if (!res.ok) throw new Error('Failed to load similar products');
@@ -180,7 +208,44 @@ const fetchRecommendations = async (productId) => {
     if (requestId === recommendationsRequestId) similarProducts.value = recommendations;
   } catch {
     if (requestId === recommendationsRequestId) similarProducts.value = [];
+  } finally {
+    if (requestId === recommendationsRequestId) recsLoading.value = false;
   }
+};
+
+// Badge helpers for similar product cards
+const badgeLabel = (reason) => {
+  if (!reason) return 'Similar';
+  if (reason.includes('same category')) return 'Same Category';
+  if (reason.includes('same department')) return 'Related';
+  return 'Similar';
+};
+const badgeClass = (reason) => {
+  if (!reason) return 'badge-similar';
+  if (reason.includes('same category')) return 'badge-same';
+  if (reason.includes('same department')) return 'badge-related';
+  return 'badge-similar';
+};
+const cleanReason = (reason) => {
+  if (!reason) return '';
+  // Only show the shared features part, formatted nicely
+  const match = reason.match(/shared features?: ([^;]+)/i);
+  if (match) {
+    const features = match[1].split(',').map(f => f.trim()).slice(0, 3);
+    return features.join(' · ');
+  }
+  if (reason.includes('similar price range')) return 'Similar price range';
+  return '';
+};
+const quickAddToCart = (rec) => {
+  if (!authStore.isAuthenticated) {
+    toast.info('Please sign in before adding items to your cart.', { timeout: 2500, hideProgressBar: true });
+    router.push({ path: '/auth', query: { redirect: route.fullPath } });
+    return;
+  }
+  cartStore.addToCart(1, rec.productId, rec.name, rec.thumbnail, getDiscountedPrice(rec));
+  cartStore.totalQuantity();
+  toast.success(`${rec.name} added to cart`, { timeout: 2000, hideProgressBar: true, icon: false });
 };
 const askQuestion = async () => {
   if (!qaQuestion.value.trim() || !product.value) return;
@@ -369,13 +434,53 @@ watch(product, (p) => {
 .sim-img-wrap {
   height: 160px; background: var(--cream-100);
   display: flex; align-items: center; justify-content: center; padding: 1rem;
+  position: relative; overflow: hidden;
 }
 .sim-img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.4s; }
 .sim-card:hover .sim-img { transform: scale(1.06); }
+/* Quick Add overlay */
+.sim-add-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(28, 25, 23, 0.82); color: var(--cream-50);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 10px; backdrop-filter: blur(4px);
+  transform: translateY(100%); transition: transform 0.28s ease;
+}
+.sim-card:hover .sim-add-overlay { transform: translateY(0); }
 .sim-body { padding: 1rem; flex: 1; }
-.sim-score { font-size: 0.65rem; font-weight: 700; color: var(--amber-600); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+/* Smart badges */
+.sim-badge {
+  display: inline-block;
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; padding: 2px 9px; border-radius: 100px;
+  margin-bottom: 6px;
+}
+.badge-same { background: rgba(34,197,94,0.1); color: #16A34A; border: 1px solid rgba(34,197,94,0.2); }
+.badge-related { background: rgba(245,158,11,0.1); color: var(--amber-600); border: 1px solid rgba(245,158,11,0.2); }
+.badge-similar { background: var(--cream-100); color: var(--stone-500); border: 1px solid var(--cream-200); }
 .sim-name { font-size: 0.85rem; font-weight: 600; color: var(--stone-800); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
-.sim-reason { font-size: 0.72rem; color: var(--stone-400); line-height: 1.5; margin-bottom: 8px; }
+.sim-reason { font-size: 0.7rem; color: var(--stone-400); line-height: 1.5; margin-bottom: 8px; min-height: 1rem; }
 .sim-price { font-size: 1rem; font-weight: 700; color: var(--stone-900); }
 .sim-original-price { font-size: 0.7rem; color: var(--stone-400); text-decoration: line-through; }
+/* Loading skeleton */
+.sim-skeleton {
+  border-radius: 16px; overflow: hidden; background: white;
+  border: 1px solid var(--cream-200); display: flex; flex-direction: column;
+}
+.skel-img {
+  height: 160px; background: var(--cream-100);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skel-body { padding: 1rem; display: flex; flex-direction: column; gap: 8px; }
+.skel-line {
+  height: 12px; border-radius: 6px; background: var(--cream-200);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skel-line.short { width: 50%; }
+.skel-line.medium { width: 70%; }
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
 </style>

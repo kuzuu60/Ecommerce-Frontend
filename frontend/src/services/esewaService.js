@@ -1,9 +1,9 @@
 import { API_BASE_URL, ESEWA_MODE } from '@/config/api';
 
-export const initiateEsewaPayment = async (amount, productId) => {
+export const initiateEsewaPayment = async (amount, productId, forceMock = false) => {
     const transaction_uuid = productId + "-" + Date.now();
 
-    if (ESEWA_MODE !== 'live') {
+    if (forceMock || ESEWA_MODE === 'mock') {
         const query = new URLSearchParams({
             txnRefId: transaction_uuid,
             productId: String(productId),
