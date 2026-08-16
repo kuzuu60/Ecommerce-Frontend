@@ -3,7 +3,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
 const pool = require('../models/db');
-const { recommendProducts, parseBudget } = require('../utils/contentBasedRecommender');
+const { recommendProducts, parseBudget, parseMinBudget } = require('../utils/contentBasedRecommender');
 const { chat, isOllamaRunning, MODEL } = require('../utils/ollamaService');
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -225,6 +225,35 @@ const getConversationRequirements = (requirements, conversation = []) => {
   };
 };
 
+// Product ranking is intentionally opt-in. The assistant endpoint is also used
+// for greetings and general questions, so a category word by itself must not
+// be treated as a request for product cards.
+const isRecommendationRequest = (query) => {
+  const normalized = String(query || '').toLowerCase().replace(/[^a-z0-9₹]+/g, ' ').trim();
+  if (!normalized) return false;
+
+  const product = '(?:laptop|laptops|phone|phones|smartphone|smartphones|mobile|mobiles|tablet|tablets|computer|notebook|macbook|home decor|decor|sports(?: gear)?|kitchen(?: essentials)?|furniture|sunglasses|accessor(?:y|ies))';
+  const recommendationPhrase = /\b(recommend(?:ation|ations)?|suggest(?:ion|ions)?|advise|advice|help me choose|what should i (?:buy|get|choose|pick)|which .* should i (?:buy|get|choose|pick)|find me|show me|give me (?:options|choices)|looking for)\b/i;
+  const productSubject = new RegExp(`\\b${product}\\b`, 'i');
+  const selectionPhrase = new RegExp(`\\b(?:best|top|ideal|right|good|great|suitable)\\s+${product}\\b|\\bwhich\\s+${product}\\b|\\b${product}\\s+(?:options?|choices?|ideas?|essentials?)\\b`, 'i');
+  const purchasePhrase = new RegExp(`\\b(?:buy|purchase|shop|shopping|choose|pick|get|need|want|search(?:ing)? for)\\b[\\s\\S]*\\b${product}\\b`, 'i');
+  const productUseCase = new RegExp(`\\b${product}\\b[\\s\\S]*\\b(?:under|below|less than|up to|upto|within|budget|for gaming|for work|for programming|for school|for students?)\\b`, 'i');
+  const numericBudget = /\b(?:under|below|less than|up to|upto|within|budget)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*\d/i;
+
+  return (recommendationPhrase.test(normalized) && productSubject.test(normalized))
+    || selectionPhrase.test(normalized)
+    || purchasePhrase.test(normalized)
+    || productUseCase.test(normalized)
+    || (numericBudget.test(normalized) && productSubject.test(normalized));
+};
+
+const generalConversationFallback = (query) => {
+  if (/\b(hi|hello|hey|greetings|good morning|good afternoon|good evening)\b/i.test(query)) {
+    return "Hey! Nice to hear from you. How can I help today? I can chat, answer questions, or help you compare products whenever you ask.";
+  }
+  return "I’m happy to help with that. I can answer general questions and chat, and I’ll only suggest products when you ask for recommendations.";
+};
+
 // ─── recommendProducts ──────────────────────────────────────────────────────
 
 const isSingularIntent = (query) => {
@@ -246,31 +275,42 @@ exports.recommendProducts = async (req, res) => {
 
     const { searchQuery, llmContext } = getConversationRequirements(requirements, conversation);
 
-    // Always run the content-based recommender to get product cards.
-    // Use searchQuery (current message only) so past messages don't pollute the TF-IDF scores.
-    const allProducts = await pool.query('SELECT * FROM products');
-    const ranked       = recommendProducts(allProducts.rows, searchQuery);
-    const budget       = parseBudget(searchQuery);
-    const inStock      = ranked.filter((entry) => Number(entry.product.stock) > 0);
-    const budgetMatches = budget === null ? inStock : inStock.filter((entry) => entry.inBudget);
+    const recommendationRequested = isRecommendationRequest(searchQuery);
+    let selected = [];
+    let budget = null;
 
-    // Dynamic relevance filtering: do NOT force 4 cards if lower-ranked products are not highly similar
-    const topScore = budgetMatches.length > 0 ? budgetMatches[0].score : 0;
-    // Candidate must have a non-trivial score and be at least 55% as relevant as the top match
-    const minScoreThreshold = Math.max(0.10, topScore * 0.55);
+    if (recommendationRequested) {
+      // Use searchQuery (current message only) so past messages don't pollute the TF-IDF scores.
+      const allProducts = await pool.query('SELECT * FROM products');
+      const ranked       = recommendProducts(allProducts.rows, searchQuery);
+      budget              = parseBudget(searchQuery);
+      const minBudget    = parseMinBudget(searchQuery);
+      const inStock      = ranked.filter((entry) => Number(entry.product.stock) > 0);
+      // Apply upper-bound budget filter (under/below X)
+      const budgetFiltered = budget === null ? inStock : inStock.filter((entry) => entry.inBudget);
+      // Apply lower-bound price filter (over/above/more than X)
+      const budgetMatches = minBudget === null ? budgetFiltered : budgetFiltered.filter((entry) => entry.effectivePrice >= minBudget);
 
-    const relevantCandidates = budgetMatches.filter((entry) => {
-      if (entry.score < minScoreThreshold) return false;
-      // If score is weak (< 0.25), avoid weak single-token fallbacks when a strong top match exists
-      if (entry.score < 0.25 && entry.matches.length <= 1 && topScore >= 0.35) return false;
-      return true;
-    });
+      // Dynamic relevance filtering: do NOT force 4 cards if lower-ranked products are not highly similar
+      const topScore = budgetMatches.length > 0 ? budgetMatches[0].score : 0;
+      // When a minBudget filter (over/above X) is active, price is the primary constraint —
+      // relax the quality bar to 0.01 so all price-matched items pass through.
+      const minScoreThreshold = minBudget !== null ? 0.01 : Math.max(0.10, topScore * 0.55);
 
-    const isSingular = isSingularIntent(searchQuery);
-    // If singular/superlative intent ("best laptop", "highest performing laptop"), select top 1-2.
-    // If plural/comparison intent ("laptops", "show laptops"), select top 4.
-    const maxItems = isSingular ? 2 : 4;
-    const selected = relevantCandidates.slice(0, maxItems);
+      const relevantCandidates = budgetMatches.filter((entry) => {
+        if (entry.score < minScoreThreshold) return false;
+        // If score is weak (< 0.25), avoid weak single-token fallbacks when a strong top match exists
+        // (Skip this guard when minBudget filter is driving the selection)
+        if (minBudget === null && entry.score < 0.25 && entry.matches.length <= 1 && topScore >= 0.35) return false;
+        return true;
+      });
+
+      const isSingular = isSingularIntent(searchQuery);
+      // If singular/superlative intent ("best laptop", "highest performing laptop"), select top 1-2.
+      // If plural/comparison intent ("laptops", "show laptops"), select top 4.
+      const maxItems = isSingular ? 2 : 4;
+      selected = relevantCandidates.slice(0, maxItems);
+    }
 
     // Try LLM for the human-readable answer text
     let answer   = null;
@@ -302,7 +342,8 @@ exports.recommendProducts = async (req, res) => {
           productRule = '';
         }
 
-        const systemPrompt = `You are Luxe, a warm, intelligent human-like shopping assistant for Luxe Commerce — a premium Nepali e-commerce store.
+        const systemPrompt = recommendationRequested
+          ? `You are Luxe, a warm, intelligent human-like shopping assistant for Luxe Commerce — a premium Nepali e-commerce store.
 
 You can:
 - Chat naturally and answer general questions about technology, lifestyle, shopping tips, comparisons, and more
@@ -318,10 +359,15 @@ ${productRule}
 - If the user greets you or asks a general question, respond naturally like a helpful human assistant.
 
 PRODUCT CATALOG (ONLY recommend items listed here — do NOT invent any others):
-${catalogBlock}`;
+${catalogBlock}`
+          : `You are Luxe, a warm, intelligent human-like conversational assistant for Luxe Commerce — a premium Nepali e-commerce store.
+
+Answer the latest user message naturally and helpfully. You can chat, greet users, explain concepts, and answer general questions.
+The latest user message is the only authority for whether a product recommendation is allowed. Do not recommend, list, compare, or mention catalog products unless that latest message explicitly asks for product suggestions or help choosing what to buy.
+Never turn a greeting or general question into a shopping recommendation. Do not use robotic phrases like "As an AI". Keep the response concise and personable (1–4 sentences).`;
 
         // Use llmContext (full history joined) so Qwen understands the conversation flow.
-        const userMessage = llmContext;
+        const userMessage = recommendationRequested ? llmContext : searchQuery;
         answer   = await chat({ systemPrompt, userMessage });
         provider = `Qwen ${MODEL.split(':')[1] || '1.5B'} (local)`;
       } catch (llmErr) {
@@ -330,7 +376,10 @@ ${catalogBlock}`;
     }
 
     // Fallback to the original template-based answer
-    if (!answer) {
+    if (!answer && !recommendationRequested) {
+      answer = generalConversationFallback(searchQuery);
+      provider = 'Conversational Recommendation Agent';
+    } else if (!answer) {
       if (selected.length === 0) {
         answer = `I could not find an in-stock product that matches "${searchQuery}" closely enough. Try adding a use case, category, or budget so I can narrow it down.`;
       } else {
@@ -355,6 +404,7 @@ ${catalogBlock}`;
         reason: buildRecommendationReason(entry, budget),
       })),
       provider,
+      recommendationRequested,
       usedConversationContext: Boolean(conversation?.length && conversation.length > 1),
     });
   } catch (error) {
@@ -362,3 +412,5 @@ ${catalogBlock}`;
     res.status(500).json({ message: error.message || 'Recommendation failed' });
   }
 };
+
+exports.isRecommendationRequest = isRecommendationRequest;

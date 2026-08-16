@@ -8,3 +8,5 @@ node_modules/
 backend/service-account.json
 
 .env.example
+
+AI_MASTER_STUDY_GUIDE.md

@@ -1,7 +1,5 @@
-// Order model - simplified for JSON-based storage
 const { v4: uuidv4 } = require('uuid');
 
-// Create a new order (returns order object without DB call)
 function createOrder(app) {
   const order_id = uuidv4();
 

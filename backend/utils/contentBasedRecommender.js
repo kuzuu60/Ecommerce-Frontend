@@ -46,7 +46,6 @@ const expandQueryTokens = (value) => {
         const stemmed = stem(token);
         expanded.add(token);
         expanded.add(stemmed);
-        // Add singular + 's' if not already
         expanded.add(stemmed + 's');
         
         const aliases = queryAliases.get(token) || queryAliases.get(stemmed) || [];
@@ -62,6 +61,20 @@ const expandQueryTokens = (value) => {
 const parseBudget = (requirements) => {
     const text = String(requirements || '').replace(/,/g, '');
     const matches = [...text.matchAll(/(?:under|below|less than|upto|up to|maximum|max|within|budget)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh)?/gi)];
+    const match = matches.at(-1);
+    if (!match) return null;
+
+    const amount = Number(match[1]);
+    const multiplier = match[2]?.toLowerCase();
+    if (!Number.isFinite(amount)) return null;
+    if (multiplier === 'k' || multiplier === 'thousand') return amount * 1000;
+    if (multiplier === 'lakh') return amount * 100000;
+    return amount;
+};
+
+const parseMinBudget = (requirements) => {
+    const text = String(requirements || '').replace(/,/g, '');
+    const matches = [...text.matchAll(/(?:over|above|more than|at least|starting from|minimum|min|greater than)\s*(?:rs\.?|npr\.?|inr\.?|₹)?\s*(\d+(?:\.\d+)?)\s*(k|thousand|lakh)?/gi)];
     const match = matches.at(-1);
     if (!match) return null;
 
@@ -191,7 +204,6 @@ const recommendProducts = (products, requirements) => {
     return products.map((product) => {
         const category = String(product.category || '').toLowerCase();
         
-        // Strict Category Isolation: If user explicitly requested laptops, exclude smartphones/tablets/etc.
         if (targetCategory && category !== targetCategory) {
             return { product, score: 0, matches: [], inBudget: false, effectivePrice: getEffectivePrice(product) };
         }
@@ -206,12 +218,10 @@ const recommendProducts = (products, requirements) => {
         const fullText = `${title} ${specs} ${description}`;
         const isAccessoryProduct = category.includes('accessories') || title.includes('case') || title.includes('cover') || title.includes('charger') || title.includes('screen protector');
 
-        // If user is searching for a main device and did NOT ask for accessories, penalize accessory products
         if (wantsDevice && !wantsAccessory && isAccessoryProduct) {
             similarity *= 0.05;
         }
 
-        // Hardware & Spec Tier Boost for laptops/devices:
         if (category === 'laptops') {
             if (/m1 pro|m2 pro|m3 max|m4|i9|rtx 3070|rtx 4080|32gb/i.test(fullText)) {
                 similarity += 0.35;
@@ -222,7 +232,6 @@ const recommendProducts = (products, requirements) => {
             }
         }
 
-        // Additional boost for performance/gaming intent
         if (wantsPerformance) {
             if (/i7|i9|ryzen 7|ryzen 9|rtx|m1|m2|m3|m4|pro|max|ultra|gaming|16gb|32gb|ssd|performance|flagship/i.test(fullText)) {
                 similarity *= 1.3;
@@ -242,4 +251,4 @@ const recommendProducts = (products, requirements) => {
     });
 };
 
-module.exports = { recommendProducts, parseBudget };
+module.exports = { recommendProducts, parseBudget, parseMinBudget };
